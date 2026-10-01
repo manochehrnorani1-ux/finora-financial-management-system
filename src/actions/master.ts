@@ -263,9 +263,8 @@ export async function saveCase(fd: FormData) {
         return { id };
       }
 
-      const workflowSteps = Array.isArray(service?.workflowSteps)
-        ? ((service?.workflowSteps as Record<string, unknown>).fa ?? (service?.workflowSteps as Record<string, unknown>).en ?? [])
-        : [];
+      const workflowCatalog = (service?.workflowSteps ?? {}) as Record<string, unknown>;
+      const workflowSteps = workflowCatalog.fa ?? workflowCatalog.en ?? [];
       const titles = Array.isArray(workflowSteps) ? workflowSteps.filter((x): x is string => typeof x === "string") : [];
 
       const [row] = await tx
