@@ -29,7 +29,11 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
   const balance = round2(opening + debit - credit);
   const targets = [...refs.cashAccounts.map((a) => ({ value: `cash:${a.id}`, label: `${t("cash")}: ${a.name}` })), ...refs.bankAccounts.map((b) => ({ value: `bank:${b.id}`, label: `${t("bank")}: ${b.label}` }))];
   const canWrite = ctx.can("customer_accounts.write");
-  let running = opening;
+  const ledgerRows = rows.reduce<Array<typeof rows[number] & { runningBalance: number }>>((acc, r) => {
+    const previous = acc.length ? acc[acc.length - 1].runningBalance : opening;
+    acc.push({ ...r, runningBalance: round2(previous + Number(r.debit) - Number(r.credit)) });
+    return acc;
+  }, []);
   return (
     <>
       <PageHeader title={`${t("ledger")} — ${c.name}`} subtitle={`${c.customerCode} · ${c.phone ?? ""}`} actions={<>
@@ -60,10 +64,7 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
         </Card>
         <Card title={t("ledger")} className="lg:col-span-3">
           <Table headers={[t("date"), t("reference"), t("description"), t("debit"), t("creditCol"), t("balance")]} empty={t("noData")}
-            rows={rows.map((r) => {
-              running = round2(running + Number(r.debit) - Number(r.credit));
-              return [formatDateTime(r.transactionDate, fmt), <span key="r" className="text-xs text-slate-500">{r.referenceType}</span>, r.description, <Money key="d" value={r.debit} />, <Money key="c" value={r.credit} />, <Money key="b" value={running} colored />];
-            })}
+            rows={ledgerRows.map((r) => [formatDateTime(r.transactionDate, fmt), <span key="r" className="text-xs text-slate-500">{r.referenceType}</span>, r.description, <Money key="d" value={r.debit} />, <Money key="c" value={r.credit} />, <Money key="b" value={r.runningBalance} colored />])}
             footer={[t("total"), "", "", <Money key="d" value={debit} />, <Money key="c" value={credit} />, <Money key="b" value={balance} colored />]} />
         </Card>
         {customerCases.length > 0 && (
