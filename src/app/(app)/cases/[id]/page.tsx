@@ -79,7 +79,12 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       {workflowSteps.length > 0 && (
         <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
           <div className="space-y-3">
-            {workflowSteps.map((step) => {\n              const taxSettlementForPayment = c.workflowKey === "tax_settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;\n              const stepAmount = taxSettlementForPayment ? Number(taxSettlementForPayment.taxAmount ?? 0) : Number(step.amount ?? 0);\n              const stepPaid = taxSettlementForPayment ? Number(taxSettlementForPayment.paidAmount ?? 0) : Number(step.paidAmount ?? 0);\n              const stepRemaining = taxSettlementForPayment ? Number(taxSettlementForPayment.remainingAmount ?? 0) : Number(step.remainingAmount ?? 0);\n              return (
+            {workflowSteps.map((step) => {
+              const taxSettlementForPayment = c.workflowKey === "tax_settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;
+              const stepAmount = taxSettlementForPayment ? Number(taxSettlementForPayment.taxAmount ?? 0) : Number(step.amount ?? 0);
+              const stepPaid = taxSettlementForPayment ? Number(taxSettlementForPayment.paidAmount ?? 0) : Number(step.paidAmount ?? 0);
+              const stepRemaining = taxSettlementForPayment ? Number(taxSettlementForPayment.remainingAmount ?? 0) : Number(step.remainingAmount ?? 0);
+              return (
               <div key={step.id} className="rounded-lg border border-slate-200 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
