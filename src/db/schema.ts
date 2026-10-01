@@ -137,7 +137,6 @@ export const services = pgTable(
     organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     category: text("category"),
-    serviceKey: text("service_key"),
     description: text("description"),
     defaultPrice: money("default_price"),
     taxTypeId: uuid("tax_type_id"),
@@ -153,25 +152,8 @@ export const services = pgTable(
     isDemo: boolean("is_demo").notNull().default(false),
     createdAt: createdAt(),
   },
-  (t) => [index("services_org_idx").on(t.organizationId), uniqueIndex("services_key_unique").on(t.organizationId, t.serviceKey)],
+  (t) => [index("services_org_idx").on(t.organizationId)],
 );
-
-/** Internal register of client licences. An authority decision must be recorded separately. */
-export const customerLicenses = pgTable("customer_licenses", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  customerId: uuid("customer_id").notNull().references(() => customers.id),
-  licenseNumber: text("license_number").notNull(),
-  licenseType: text("license_type").notNull().default("fx"),
-  status: text("status").notNull().default("unknown"),
-  issuedAt: date("issued_at"),
-  expiresAt: date("expires_at"),
-  authorityReference: text("authority_reference"),
-  notes: text("notes"),
-  createdBy: uuid("created_by").references(() => profiles.id),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-}, (t) => [uniqueIndex("customer_licence_unique").on(t.organizationId, t.licenseNumber), index("customer_licence_customer_idx").on(t.organizationId, t.customerId)]);
 
 export const cases = pgTable(
   "cases",
@@ -181,18 +163,11 @@ export const cases = pgTable(
     caseNumber: text("case_number").notNull(),
     customerId: uuid("customer_id").notNull().references(() => customers.id),
     serviceId: uuid("service_id").references(() => services.id, { onDelete: "set null" }),
-    serviceKey: text("service_key").notNull().default("other-admin"),
-    parentCaseId: uuid("parent_case_id"),
-    licenseId: uuid("license_id").references(() => customerLicenses.id, { onDelete: "set null" }),
     responsibleEmployeeId: uuid("responsible_employee_id").references(() => profiles.id, { onDelete: "set null" }),
     status: text("status").notNull().default("new"),
     priority: text("priority").notNull().default("normal"),
     openedAt: date("opened_at").notNull(),
-    dueDate: date("due_date"),
     closedAt: date("closed_at"),
-    outcomeReference: text("outcome_reference"),
-    outcomeStatus: text("outcome_status"),
-    outcomeDate: date("outcome_date"),
     serviceFee: money("service_fee"),
     discountAmount: money("discount_amount"),
     feeCurrency: text("fee_currency").notNull().default("AFN"),
@@ -208,93 +183,9 @@ export const cases = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("cases_number_unique").on(t.organizationId, t.caseNumber), index("cases_org_status_idx").on(t.organizationId, t.status), index("cases_service_idx").on(t.organizationId, t.serviceKey), index("cases_parent_idx").on(t.organizationId, t.parentCaseId)],
+  (t) => [uniqueIndex("cases_number_unique").on(t.organizationId, t.caseNumber), index("cases_org_status_idx").on(t.organizationId, t.status)],
 );
 
-<<<<<<< HEAD
-export const caseRequirements = pgTable("case_requirements", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  caseId: uuid("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
-  position: integer("position").notNull(),
-  title: text("title").notNull(),
-  status: text("status").notNull().default("missing"),
-  evidenceAttachmentId: uuid("evidence_attachment_id"),
-  verifiedBy: uuid("verified_by").references(() => profiles.id),
-  verifiedAt: timestamp("verified_at", { withTimezone: true }),
-  createdAt: createdAt(),
-}, (t) => [uniqueIndex("case_requirement_position_unique").on(t.caseId, t.position), index("case_requirement_org_idx").on(t.organizationId, t.caseId)]);
-
-export const caseTasks = pgTable("case_tasks", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  caseId: uuid("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
-  position: integer("position").notNull(),
-  stepKey: text("step_key").notNull(),
-  status: text("status").notNull().default("pending"),
-  completedBy: uuid("completed_by").references(() => profiles.id),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  result: text("result"),
-  createdAt: createdAt(),
-}, (t) => [uniqueIndex("case_task_position_unique").on(t.caseId, t.position), index("case_task_org_idx").on(t.organizationId, t.caseId)]);
-
-export const casePlanSteps = pgTable("case_plan_steps", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  caseId: uuid("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
-  position: integer("position").notNull(),
-  title: text("title").notNull(),
-  dueDate: date("due_date").notNull(),
-  amountDue: money("amount_due"),
-  status: text("status").notNull().default("pending"),
-  completionNotes: text("completion_notes"),
-  approvedBy: uuid("approved_by").references(() => profiles.id),
-  approvedAt: timestamp("approved_at", { withTimezone: true }),
-  createdBy: uuid("created_by").references(() => profiles.id),
-  createdAt: createdAt(),
-}, (t) => [uniqueIndex("case_step_position_unique").on(t.caseId, t.position), index("case_step_org_idx").on(t.organizationId, t.caseId)]);
-
-/** External payment evidence: this is not a FINORA cash/bank movement. */
-export const caseStepPayments = pgTable("case_step_payments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  stepId: uuid("step_id").notNull().references(() => casePlanSteps.id),
-  amount: money("amount"),
-  paymentDate: date("payment_date").notNull(),
-  authorityReceipt: text("authority_receipt").notNull(),
-  evidenceAttachmentId: uuid("evidence_attachment_id"),
-  createdBy: uuid("created_by").references(() => profiles.id),
-  createdAt: createdAt(),
-}, (t) => [index("case_step_payment_idx").on(t.organizationId, t.stepId)]);
-
-/** Client-wide verified liabilities outside an already-recorded tax settlement. */
-export const customerObligations = pgTable("customer_obligations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  customerId: uuid("customer_id").notNull().references(() => customers.id),
-  caseId: uuid("case_id").references(() => cases.id, { onDelete: "set null" }),
-  category: text("category").notNull(),
-  description: text("description").notNull(),
-  amount: money("amount"),
-  currency: text("currency").notNull().default("AFN"),
-  authorityReference: text("authority_reference").notNull(),
-  evidenceAttachmentId: uuid("evidence_attachment_id"),
-  createdBy: uuid("created_by").references(() => profiles.id),
-  createdAt: createdAt(),
-}, (t) => [index("customer_obligation_idx").on(t.organizationId, t.customerId)]);
-
-export const obligationPayments = pgTable("obligation_payments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  obligationId: uuid("obligation_id").notNull().references(() => customerObligations.id),
-  amount: money("amount"),
-  paymentDate: date("payment_date").notNull(),
-  authorityReceipt: text("authority_receipt").notNull(),
-  evidenceAttachmentId: uuid("evidence_attachment_id"),
-  createdBy: uuid("created_by").references(() => profiles.id),
-  createdAt: createdAt(),
-}, (t) => [index("obligation_payment_idx").on(t.organizationId, t.obligationId)]);
-=======
 export const caseWorkflowSteps = pgTable(
   "case_workflow_steps",
   {
@@ -338,7 +229,6 @@ export const caseWorkflowPayments = pgTable("case_workflow_payments", {
   recordedBy: uuid("recorded_by").references(() => profiles.id),
   createdAt: createdAt(),
 }, (t) => [index("case_workflow_payments_step_idx").on(t.organizationId, t.workflowStepId, t.paymentDate), index("case_workflow_payments_case_idx").on(t.organizationId, t.caseId, t.paymentDate)]);
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
 
 export const documents = pgTable(
   "documents",
