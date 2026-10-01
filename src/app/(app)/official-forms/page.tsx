@@ -66,7 +66,9 @@ export default async function OfficialFormsPage({ searchParams }: { searchParams
               {ctx.can("official_forms.verify") && f.isOfficial && f.verificationStatus !== "verified" && <ActionButton action={verifyOfficialFormAction} args={[f.id]} label={t("verify")} variant="warning" confirm={t("legalReviewRequired")} />}
               {ctx.can("official_forms.write") && (
                 <FormDialog title={t("generateForm")} triggerLabel={t("generateForm")} triggerVariant="secondary" triggerSize="sm" action={createGeneratedFormAction} hidden={{ formId: f.id }} successPath="/generated-forms/{id}" fields={[
-                  { name: "caseId", label: t("case"), type: "select", defaultValue: caseId, options: caseOptions.map((c) => ({ value: c.c.id, label: `${c.c.caseNumber} — ${c.customer}` })) },\n                  { name: "branchId", label: "نمایندگی مورد نظر", type: "select", options: branchOptions.map((b) => ({ value: b.id, label: `${b.number ?? "—"} — ${b.label ?? "نمایندگی"}` })) },\n                  { name: "employeeId", label: "کارمند/نماینده مورد نظر", type: "select", options: employeeOptions.map((e) => ({ value: e.id, label: `${e.label} — ${e.position ?? ""}` })) },
+                  { name: "caseId", label: t("case"), type: "select", defaultValue: caseId, options: caseOptions.map((c) => ({ value: c.c.id, label: `${c.c.caseNumber} — ${c.customer}` })) },
+                  { name: "branchId", label: "نمایندگی مورد نظر", type: "select", options: branchOptions.map((b) => ({ value: b.id, label: `${b.number ?? "—"} — ${b.label ?? "نمایندگی"}` })) },
+                  { name: "employeeId", label: "کارمند/نماینده مورد نظر", type: "select", options: employeeOptions.map((e) => ({ value: e.id, label: `${e.label} — ${e.position ?? ""}` })) },
                 ]} />
               )}
             </div>,

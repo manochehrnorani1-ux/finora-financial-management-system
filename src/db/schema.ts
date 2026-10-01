@@ -100,7 +100,8 @@ export const organizationMembers = pgTable(
   (t) => [uniqueIndex("org_members_unique").on(t.organizationId, t.userId)],
 );
 
-/* ---------------- Master data ---------------- */\n
+/* ---------------- Master data ---------------- */
+
 /* ---------------- ZIP-derived customer business records ---------------- */
 export const customerLicenses = pgTable("customer_licenses", {
   id: uuid("id").primaryKey().defaultRandom(),
