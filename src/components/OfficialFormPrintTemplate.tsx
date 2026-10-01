@@ -11,7 +11,7 @@ type Props = {
 };
 
 const label = (key: string, lang: Props["language"]) => {
-  const d: Record<string,string> = {
+  const d: Record<string,string> = { shareholders:lang==="en"?"Shareholders":lang==="ps"?"ونډه‌وال":"سهمداران", employees:lang==="en"?"Employees":lang==="ps"?"کارکوونکي":"کارمندان", branches:lang==="en"?"Branches":lang==="ps"?"نمایندګۍ":"نمایندگی‌ها", banks:lang==="en"?"Bank accounts":lang==="ps"?"بانکي حسابونه":"حساب‌های بانکی",
     company: lang==="en"?"Company name":lang==="ps"?"د شرکت نوم":"نام شرکت",
     license: lang==="en"?"Licence number":lang==="ps"?"د جواز شمېره":"شماره جواز",
     tin: "TIN", phone: lang==="en"?"Telephone":lang==="ps"?"د اړیکې شمېره":"شماره تماس",
@@ -68,7 +68,7 @@ export function OfficialFormPrintTemplate({formKey,formName,agency,formNumber,in
   const dir=language==="en"?"ltr":"rtl";
   const titles:Record<string,string>={ "dab-msp-renewal":language==="en"?"Money Services Licence Renewal Application":language==="ps"?"د پولي خدمتونو د جواز د تمدید غوښتنلیک فورم":"فورم درخواستی تمدید جواز شرکت صرافی و خدمات پولی", "dab-msp-branch-renewal":language==="en"?"Money Services Branch Renewal Form":language==="ps"?"د نمایندګۍ د جواز د تمدید فورم":"فورم تمدید نمایندگی شرکت صرافی و خدمات پولی", "dab-msp-guarantee-2":language==="en"?"Money Services Shareholder Guarantee Form":language==="ps"?"د ونډه‌والو د ضمانت فورم":"فورم تضمین سر سهمدار / سهمداران شرکت صرافی و خدمات پولی" };
   const body=formKey==="dab-msp-renewal"
-    ? <><Section title="1"><Fields values={values} keys={["company","license","tin","province","district","area","market","shop","phone"]} language={language}/></Section><BusinessTables values={values} language={language}/><Section title="2"><Fields values={values} keys={["change_requested","change_description","tax_clearance_status","guarantee_status","signature_date"]} language={language}/></Section></>
+    ? <><Section title="1"><Fields values={values} keys={["company_name","license_number","tin","province","district","area","market","shop_number","phone"]} language={language}/></Section><BusinessTables values={values} language={language}/><Section title="2"><Fields values={values} keys={["change_requested","change_description","tax_clearance_status","guarantee_status","signature_date"]} language={language}/></Section></>
     : formKey==="dab-msp-branch-renewal"
     ? <><Section title="1"><Fields values={values} keys={["company_name","license_number","office_address","branch_number","branch_name","branch_province","branch_district","branch_market","branch_shop"]} language={language}/></Section><Section title="2"><Fields values={values} keys={["representative_name","representative_father","representative_tazkira","representative_phone","representative_education","representative_education_field"]} language={language}/></Section><Section title="3"><Fields values={values} keys={["license_current","representative_id_submitted","education_evidence_submitted","signature_date"]} language={language}/></Section></>
     : formKey==="dab-msp-guarantee-2"
