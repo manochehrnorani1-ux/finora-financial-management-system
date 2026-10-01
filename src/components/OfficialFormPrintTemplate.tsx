@@ -30,7 +30,7 @@ const label = (key: string, lang: Props["language"]) => {
     bank: lang==="en"?"Bank":lang==="ps"?"بانک":"بانک",
     phone: lang==="en"?"Telephone":lang==="ps"?"د اړیکې شمېره":"شماره تماس"
   };
-  return d[key] ?? key;
+  const aliases: Record<string,string> = { company_name:"company", license_number:"license", shop_number:"shop", branch_number:"branch", branch_province:"province", branch_district:"district", branch_area:"area", branch_market:"market", representative_father:"father", representative_tazkira:"id", representative_phone:"phone", representative_education:"education", representative_education_field:"education", shareholders:"shareholders", employees:"employees", branches:"branches", banks:"banks" };\n  return d[aliases[key] ?? key] ?? key;
 };
 
 const value = (values: Record<string,unknown>, key:string) => {
