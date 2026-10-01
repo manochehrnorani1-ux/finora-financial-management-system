@@ -9,7 +9,7 @@ import { PrintButton } from "@/components/forms";
 import { GeneratedFormFiller, type FillerField } from "@/components/GeneratedFormFiller";
 import { formatDateTime } from "@/lib/jalali";
 import { CustomerLogo, FinoraLogo } from "@/components/BrandLogos";
-import { getZipFormDefinition } from "@/lib/zip-form-definitions";
+import { getZipFormDefinition, mergeZipFields } from "@/lib/zip-form-definitions";
 
 export default async function GeneratedFormPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
