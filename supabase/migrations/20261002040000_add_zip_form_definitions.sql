@@ -18,7 +18,7 @@ cross join (values
   ('dab-msp-shareholder-employee-info','معلومات عمومی سهمداران و کارمندان شرکت',
    '[{"key":"company_name","label":"نام شرکت","type":"text","required":true,"mapping":"customer.name"},{"key":"record_type","label":"نوع ریکارد","type":"select","required":true,"options":["سهمدار","کارمند"]},{"key":"signature_date","label":"تاریخ","type":"date","required":true}]',
    '{"company_name":"customer.name"}')
-) as v(form_key, form_name, fields, mapping) on true
+) as v(form_key, form_name, fields, mapping)
 where not exists (
   select 1 from public.official_forms f
   where f.organization_id=o.id and f.form_key=v.form_key
