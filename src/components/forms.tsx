@@ -106,18 +106,12 @@ export function ActionButton({
 
 /* ---------------- Jalali date input ---------------- */
 export function DateInput({ name, defaultValue, required, className = "" }: { name: string; defaultValue?: string | null; required?: boolean; className?: string }) {
-<<<<<<< HEAD
   const { lang, dateFormat, t } = useI18n();
-  const init = defaultValue || (required ? todayIso() : "");
-  const base = init || todayIso();
-  const g = base.split("-").map((x) => parseInt(x, 10));
-=======
-  const { lang, dateFormat } = useI18n();
   const fallback = todayIso();
-  const candidate = defaultValue || fallback;
-  const init = /^\d{4}-\d{2}-\d{2}$/.test(candidate) && !Number.isNaN(Date.parse(candidate + "T00:00:00")) ? candidate : fallback;
-  const g = init.split("-").map((x) => parseInt(x, 10));
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
+  const candidate = defaultValue || (required ? fallback : "");
+  const init = candidate === "" ? "" : (/^\d{4}-\d{2}-\d{2}$/.test(candidate) && !Number.isNaN(Date.parse(candidate + "T00:00:00")) ? candidate : fallback);
+  const base = init || fallback;
+  const g = base.split("-").map((x) => parseInt(x, 10));
   const j0 = toJalali(g[0], g[1], g[2]);
   const [jy, setJy] = useState(j0.jy);
   const [jm, setJm] = useState(j0.jm);
@@ -136,19 +130,10 @@ export function DateInput({ name, defaultValue, required, className = "" }: { na
   const years = Array.from({ length: 21 }, (_, i) => j0.jy - 10 + i);
   const months = JALALI_MONTHS[lang];
   return (
-<<<<<<< HEAD
     <div className={`flex items-center gap-1 ${className}`} dir="ltr">
-      <input type="hidden" name={name} value={empty ? "" : iso} />
+      <input type="hidden" name={name} value={empty ? "" : (validIso ? iso : fallback)} required={required} />
       <select className="input !w-16 px-1" value={dd} disabled={empty} onChange={(e) => setJd(+e.target.value)}>
         {Array.from({ length: dmax }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
-=======
-    <div className={`flex gap-1 ${className}`} dir="ltr">
-      <input type="hidden" name={name} value={validIso ? iso : fallback} required={required} />
-      <select className="input !w-16 px-1" value={dd} onChange={(e) => setJd(+e.target.value)}>
-        {Array.from({ length: dmax }, (_, i) => i + 1).map((d) => (
-          <option key={d} value={d}>{d}</option>
-        ))}
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
       </select>
       <select className="input flex-1 px-1" value={jm} disabled={empty} onChange={(e) => setJm(+e.target.value)}>
         {months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
