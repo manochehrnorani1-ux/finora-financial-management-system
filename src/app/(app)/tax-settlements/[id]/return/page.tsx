@@ -10,7 +10,12 @@ import { CustomerLogo, FinoraLogo } from "@/components/BrandLogos";
 import type { TaxComputationStep, TaxRuleConditions } from "@/lib/tax-engine";
 import { formatDate, formatDateTime } from "@/lib/jalali";
 
-const SKEY: Record<string, string> = { calculated: "calculated", approved: "approved", part_paid: "part_paid", paid: "paid", REQUIRES_LEGAL_REVIEW: "requiresLegalReview" };
+const SKEY: Record<string, string> = { calculated: "calculated", approved: "approved", part_paid: "part_paid", paid: "paid", REQUIRES_LEGAL_REVIEW: "requiresLegalReview" };\n\nconst Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex items-baseline justify-between gap-3 border-b border-dashed border-slate-300 py-1.5 text-sm">
+    <span className="shrink-0 text-slate-600">{label}</span>
+    <span className="text-end font-medium text-slate-900">{value ?? "—"}</span>
+  </div>
+);
 
 export default async function TaxReturnPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
