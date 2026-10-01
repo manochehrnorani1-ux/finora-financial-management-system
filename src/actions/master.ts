@@ -1,7 +1,7 @@
 "use server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { attachments, caseFiles, caseNotes, caseWorkflowSteps, cases, complianceEvents, contracts, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, letters } from "@/db/schema";
+import { attachments, caseFiles, caseNotes, caseWorkflowPayments, caseWorkflowSteps, cases, complianceEvents, contracts, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, letters } from "@/db/schema";
 import { requireContext } from "@/lib/auth";
 import { audit, FinanceError, nextNumber } from "@/lib/finance";
 import { num, optStr, str } from "@/lib/format";
@@ -293,6 +293,8 @@ export async function saveCase(fd: FormData) {
             title,
             status: index === 0 ? "active" : "pending",
             actionRequired: title,
+            paidAmount: 0,
+            remainingAmount: 0,
           })),
         );
       }
@@ -356,6 +358,7 @@ export async function completeCaseWorkflowStepAction(id: string) {
         .for("update");
       if (!step) throw new FinanceError("not_found");
       if (step.status !== "active") throw new FinanceError("invalid_transition");
+      if (Number(step.amount ?? 0) > 0 && Number(step.paidAmount ?? 0) < Number(step.amount ?? 0)) throw new FinanceError("workflow_payment_required");
 
       const [row] = await tx.select().from(cases)
         .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id)))
@@ -409,6 +412,34 @@ export async function completeCaseWorkflowStepAction(id: string) {
         oldData: { status: step.status, caseId: step.caseId, stepNo: step.stepNo },
         newData: { status: "completed", nextStepNo: next?.stepNo ?? null },
       });
+    });
+  });
+}
+
+export async function recordCaseWorkflowPaymentAction(fd: FormData) {
+  return act(async () => {
+    const ctx = await requireContext("cases.write");
+    const stepId = str(fd.get("stepId"));
+    const amount = Number(str(fd.get("amount")).replace(/,/g, ""));
+    const paymentDate = str(fd.get("paymentDate")) || new Date().toISOString().slice(0, 10);
+    const paymentMethod = optStr(fd.get("paymentMethod"));
+    const referenceNumber = optStr(fd.get("referenceNumber"));
+    const notes = optStr(fd.get("notes"));
+    if (!stepId || !Number.isFinite(amount) || amount <= 0 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(paymentDate)) throw new FinanceError("invalid_workflow_payment");
+    return db.transaction(async (tx) => {
+      const [step] = await tx.select().from(caseWorkflowSteps).where(and(eq(caseWorkflowSteps.id, stepId), eq(caseWorkflowSteps.organizationId, ctx.org.id))).for("update");
+      if (!step) throw new FinanceError("not_found");
+      if (step.status !== "active") throw new FinanceError("invalid_transition");
+      const due = Number(step.amount ?? 0);
+      const paid = Number(step.paidAmount ?? 0);
+      if (due <= 0 || paid + amount > due) throw new FinanceError("amount_exceeds_due");
+      const [row] = await tx.select({ id: cases.id }).from(cases).where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id)));
+      if (!row) throw new FinanceError("not_found");
+      const [payment] = await tx.insert(caseWorkflowPayments).values({ organizationId: ctx.org.id, caseId: step.caseId, workflowStepId: step.id, amount, currency: ctx.org.currency, paymentDate, paymentMethod, referenceNumber, notes, recordedBy: ctx.user.id }).returning();
+      const newPaid = paid + amount;
+      await tx.update(caseWorkflowSteps).set({ paidAmount: newPaid, remainingAmount: Math.max(0, due - newPaid), updatedAt: new Date() }).where(eq(caseWorkflowSteps.id, step.id));
+      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "case_workflow_payment", entityId: payment.id, newData: { stepId: step.id, caseId: step.caseId, amount, paidAmount: newPaid, remainingAmount: Math.max(0, due - newPaid) } });
+      return { id: payment.id };
     });
   });
 }
