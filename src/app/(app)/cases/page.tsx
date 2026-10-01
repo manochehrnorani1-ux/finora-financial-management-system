@@ -74,11 +74,12 @@ export default async function CasesPage({ searchParams }: { searchParams: SP }) 
         <Table headers={[t("caseNumber"), t("customer"), t("service"), t("workflowProcess"), t("responsibleEmployee"), t("milestoneDue"), t("status"), t("actions")]} empty={t("noData")}
           rows={rows.map(({ c, customer, customerCode, service, employee }) => {
             const currentStep = allSteps.find((v) => v.caseId === c.id && v.status === "active") ?? allSteps.find((v) => v.caseId === c.id && v.status !== "completed");
-            const currentStage = currentStep?.title ?? (!isWorkflowKey(c.workflowKey) ? t("workflowNoService") : c.status === "closed" ? t("caseClosed") : t("readyToApprove"));
+            const workflowKey = c.workflowKey ?? "";
+            const currentStage = currentStep?.title ?? (!isWorkflowKey(workflowKey) ? t("workflowNoService") : c.status === "closed" ? t("caseClosed") : t("readyToApprove"));
             return [
               <Link key="n" href={`/cases/${c.id}`} className="font-mono text-xs font-semibold text-emerald-800">{c.caseNumber}</Link>,
               <span key="cu" className="font-medium">{customerCode} · {customer}</span>,
-              isWorkflowKey(c.serviceKey) ? <Link key="s" href={`/services-workflow/${c.serviceKey}`} className="text-emerald-700">{WORKFLOW_SERVICES[c.serviceKey].label[lang]}</Link> : service ?? "—",
+              isWorkflowKey(workflowKey) ? <Link key="s" href={`/services-workflow/${workflowKey}`} className="text-emerald-700">{WORKFLOW_SERVICES[workflowKey].label[lang]}</Link> : service ?? "—",
               <span key="w" className="text-xs text-slate-700">{currentStage}</span>,
               employee ?? "—",
               currentStep?.dueDate ? <span key="d" className={currentStep.dueDate < todayIso() && activeCount ? "text-red-700" : ""}>{formatDate(currentStep.dueDate, fmt)}</span> : "—",
