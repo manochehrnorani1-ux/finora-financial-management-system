@@ -37,3 +37,105 @@ select.input {
   section { page-break-inside: avoid; }
   a { color: inherit !important; text-decoration: none !important; }
 }
+
+
+.print-document {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 8mm 10mm;
+  background: white;
+  color: #111827;
+  font-size: 10.5pt;
+  line-height: 1.45;
+}
+.print-document-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
+  align-items: flex-start;
+  border-bottom: 1.5px solid #111827;
+  padding-bottom: 4mm;
+  margin-bottom: 5mm;
+}
+.print-agency { font-size: 11pt; font-weight: 700; }
+.print-title { margin-top: 2mm; font-size: 15pt; font-weight: 800; }
+.print-meta { min-width: 35mm; text-align: end; font-size: 9pt; line-height: 1.8; }
+.print-section { margin-top: 5mm; break-inside: avoid; page-break-inside: avoid; }
+.print-section-title {
+  margin: 0 0 2.5mm;
+  padding: 1.5mm 2mm;
+  border: 1px solid #111827;
+  background: #f3f4f6;
+  font-size: 11pt;
+  font-weight: 800;
+}
+.print-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid #374151;
+  border-inline-start: 1px solid #374151;
+}
+.print-field {
+  min-height: 11mm;
+  display: grid;
+  grid-template-columns: minmax(35mm, 42%) 1fr;
+  gap: 2mm;
+  align-items: center;
+  padding: 2mm;
+  border-inline-end: 1px solid #374151;
+  border-bottom: 1px solid #374151;
+}
+.print-field span { font-size: 9pt; color: #374151; }
+.print-field strong { font-size: 9.5pt; font-weight: 600; overflow-wrap: anywhere; }
+.print-table-wrap { overflow: visible; width: 100%; }
+.print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8.5pt; }
+.print-table th, .print-table td {
+  border: 1px solid #374151;
+  padding: 1.5mm 1.2mm;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.print-table thead { display: table-header-group; }
+.print-table th { font-weight: 800; background: #f3f4f6; }
+.print-table tr { break-inside: avoid; page-break-inside: avoid; }
+.print-paragraph { margin: 0; white-space: pre-wrap; }
+.print-signatures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14mm;
+  margin-top: 12mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.print-signature { min-height: 22mm; border-top: 1px solid #374151; padding-top: 2mm; text-align: center; }
+.print-signature-space { height: 15mm; }
+.print-document-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8mm;
+  padding-top: 2mm;
+  border-top: 1px solid #9ca3af;
+  font-size: 8pt;
+  color: #4b5563;
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 8mm 10mm; }
+  html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+  body { font-size: 10.5pt; }
+  .print-document { max-width: none; margin: 0; padding: 0; }
+  .print-document-header, .print-section, .print-signatures { break-inside: avoid; page-break-inside: avoid; }
+  .print-table-wrap { break-inside: auto; page-break-inside: auto; }
+  .print-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .print-document-footer { break-inside: avoid; page-break-inside: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+
+@media print and (orientation: landscape) {
+  .print-document { max-width: none; }
+  .print-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .print-table { font-size: 8pt; }
+}
