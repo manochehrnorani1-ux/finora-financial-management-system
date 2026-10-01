@@ -4,7 +4,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { attachments, bankAccounts, caseFiles, caseNotes, caseWorkflowSteps, cases, customers, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, cashAccounts } from "@/db/schema";
 import { pageContext } from "@/lib/page";
-import { saveCase, transitionCase, addCaseNoteForm, uploadCaseFile, saveDocument, deleteUnlinkedCaseAction, completeCaseWorkflowStepAction, updateCaseWorkflowStepAction } from "@/actions/master";
+import { saveCase, transitionCase, addCaseNoteForm, uploadCaseFile, saveDocument, deleteUnlinkedCaseAction, completeCaseWorkflowStepAction, updateCaseWorkflowStepAction, recordCaseWorkflowPaymentAction } from "@/actions/master";
 import { receiveCaseFee } from "@/actions/finance";
 import { ActionButton, FormDialog, PrintButton, type Field } from "@/components/forms";
 import { Badge, Card, KV, Money, PageHeader, Stat, Table } from "@/components/ui";
@@ -92,6 +92,8 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                   <span>اقدام: {step.actionRequired || "—"}</span>
                   <span>موعد: {step.dueDate ? formatDate(step.dueDate, fmt) : "—"}</span>
                   <span>مبلغ: {step.amount === null ? "—" : <Money value={step.amount} currency={c.feeCurrency} />}</span>
+                  <span>پرداخت‌شده: {Number(step.paidAmount ?? 0) > 0 ? <Money value={step.paidAmount} currency={c.feeCurrency} /> : "—"}</span>
+                  <span>باقی‌مانده: {Number(step.remainingAmount ?? 0) > 0 ? <Money value={step.remainingAmount} currency={c.feeCurrency} /> : "—"}</span>
                 </div>
                 {ctx.can("cases.write") && step.status !== "completed" && (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -108,6 +110,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                         { name: "notes", label: "یادداشت", type: "textarea", defaultValue: step.notes ?? undefined, full: true },
                       ]}
                     />
+                    {step.status === "active" && Number(step.amount ?? 0) > 0 && Number(step.remainingAmount ?? 0) > 0 && <FormDialog title="ثبت پرداخت مرحله" triggerLabel="ثبت پرداخت" triggerSize="sm" action={recordCaseWorkflowPaymentAction} hidden={{ stepId: step.id }} fields={[{ name: "amount", label: "مبلغ پرداخت (" + c.feeCurrency + ")", type: "number", required: true, defaultValue: step.remainingAmount }, { name: "paymentDate", label: "تاریخ پرداخت", type: "date", required: true }, { name: "paymentMethod", label: "روش پرداخت" }, { name: "referenceNumber", label: "شماره مرجع/رسید" }, { name: "notes", label: "یادداشت", type: "textarea", full: true }]} />}
                     {step.status === "active" && <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />}
                   </div>
                 )}
