@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { attachments, bankAccounts, caseFiles, caseNotes, cases, customers, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, cashAccounts } from "@/db/schema";
+import { attachments, bankAccounts, caseFiles, caseNotes, caseWorkflowSteps, cases, customers, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, cashAccounts } from "@/db/schema";
 import { pageContext } from "@/lib/page";
-import { saveCase, transitionCase, addCaseNoteForm, uploadCaseFile, saveDocument, deleteUnlinkedCaseAction } from "@/actions/master";
+import { saveCase, transitionCase, addCaseNoteForm, uploadCaseFile, saveDocument, deleteUnlinkedCaseAction, completeCaseWorkflowStepAction, updateCaseWorkflowStepAction } from "@/actions/master";
 import { receiveCaseFee } from "@/actions/finance";
 import { ActionButton, FormDialog, PrintButton, type Field } from "@/components/forms";
 import { Badge, Card, KV, Money, PageHeader, Stat, Table } from "@/components/ui";
@@ -19,7 +19,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     .from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).leftJoin(services, eq(cases.serviceId, services.id)).leftJoin(profiles, eq(cases.responsibleEmployeeId, profiles.id)).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id)));
   if (!record) notFound();
   const c = record.c;
-  const [customerList, serviceList, members, notes, docs, fees, files, settlements, forms, incomeRows, cash, bank] = await Promise.all([
+  const [customerList, serviceList, members, notes, docs, fees, files, settlements, workflowSteps, forms, incomeRows, cash, bank] = await Promise.all([
     db.select({ id: customers.id, name: customers.name, code: customers.customerCode }).from(customers).where(eq(customers.organizationId, ctx.org.id)).orderBy(customers.name),
     db.select({ id: services.id, name: services.name }).from(services).where(eq(services.organizationId, ctx.org.id)),
     db.select({ id: profiles.id, name: profiles.fullName }).from(organizationMembers).innerJoin(profiles, eq(organizationMembers.userId, profiles.id)).where(and(eq(organizationMembers.organizationId, ctx.org.id), eq(organizationMembers.status, "active"))),
@@ -28,6 +28,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     db.select({ r: serviceFeeReceipts, user: profiles.fullName }).from(serviceFeeReceipts).leftJoin(profiles, eq(serviceFeeReceipts.issuedBy, profiles.id)).where(and(eq(serviceFeeReceipts.caseId, id), eq(serviceFeeReceipts.organizationId, ctx.org.id))).orderBy(desc(serviceFeeReceipts.createdAt)),
     db.select({ f: caseFiles, a: attachments, user: profiles.fullName }).from(caseFiles).innerJoin(attachments, eq(caseFiles.attachmentId, attachments.id)).leftJoin(profiles, eq(caseFiles.uploadedBy, profiles.id)).where(and(eq(caseFiles.caseId, id), eq(caseFiles.organizationId, ctx.org.id))).orderBy(desc(caseFiles.createdAt)),
     db.select().from(taxSettlements).where(and(eq(taxSettlements.caseId, id), eq(taxSettlements.organizationId, ctx.org.id))).orderBy(desc(taxSettlements.createdAt)),
+    db.select().from(caseWorkflowSteps).where(and(eq(caseWorkflowSteps.caseId, id), eq(caseWorkflowSteps.organizationId, ctx.org.id))).orderBy(asc(caseWorkflowSteps.stepNo)),
     db.select().from(generatedForms).where(and(eq(generatedForms.caseId, id), eq(generatedForms.organizationId, ctx.org.id))).orderBy(desc(generatedForms.createdAt)),
     db.select().from(incomes).where(and(eq(incomes.caseId, id), eq(incomes.organizationId, ctx.org.id))).orderBy(desc(incomes.createdAt)),
     db.select({ id: cashAccounts.id, name: cashAccounts.name }).from(cashAccounts).where(and(eq(cashAccounts.organizationId, ctx.org.id), eq(cashAccounts.isActive, true))),
@@ -75,6 +76,46 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         <Stat label={t("remainingAmount")} value={<Money value={remaining} currency={c.feeCurrency} />} tone={remaining > 0 ? "amber" : "green"} />
         <Stat label={t("status")} value={t(STATUS_KEY[c.status] ?? c.status)} />
       </div>
+      {workflowSteps.length > 0 && (
+        <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
+          <div className="space-y-3">
+            {workflowSteps.map((step) => (
+              <div key={step.id} className="rounded-lg border border-slate-200 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold">{step.stepNo}</span>
+                    <span className="font-medium">{step.title}</span>
+                  </div>
+                  <Badge status={step.status === "completed" ? "completed" : step.status === "active" ? "under_review" : step.status === "blocked" ? "rejected" : "draft"} label={step.status === "completed" ? "تکمیل‌شده" : step.status === "active" ? "مرحله فعلی" : step.status === "blocked" ? "متوقف" : "در انتظار"} />
+                </div>
+                <div className="mt-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
+                  <span>اقدام: {step.actionRequired || "—"}</span>
+                  <span>موعد: {step.dueDate ? formatDate(step.dueDate, fmt) : "—"}</span>
+                  <span>مبلغ: {step.amount === null ? "—" : <Money value={step.amount} currency={c.feeCurrency} />}</span>
+                </div>
+                {ctx.can("cases.write") && step.status !== "completed" && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <FormDialog
+                      title="تنظیم مرحله عملیاتی"
+                      triggerLabel="تنظیم مرحله"
+                      triggerSize="sm"
+                      action={updateCaseWorkflowStepAction}
+                      hidden={{ id: step.id }}
+                      fields={[
+                        { name: "actionRequired", label: "اقدام مورد نیاز", defaultValue: step.actionRequired ?? step.title, full: true },
+                        { name: "dueDate", label: "موعد", type: "date", defaultValue: step.dueDate ?? undefined },
+                        { name: "amount", label: "مبلغ (" + c.feeCurrency + ")", type: "number", defaultValue: step.amount ?? undefined },
+                        { name: "notes", label: "یادداشت", type: "textarea", defaultValue: step.notes ?? undefined, full: true },
+                      ]}
+                    />
+                    {step.status === "active" && <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card title={t("details")} className="lg:col-span-1">
           <KV items={[[t("caseNumber"), c.caseNumber], [t("customer"), <Link key="c" href={`/customer-accounts/${c.customerId}`} className="text-emerald-700">{record.customer.name}</Link>], [t("service"), record.service?.name ?? "-"], [t("openingDate"), formatDate(c.openedAt, fmt)], [t("responsibleEmployee"), record.employee ?? "-"], [t("priority"), t(c.priority)], [t("caseFee"), <Money key="f" value={c.serviceFee} currency={c.feeCurrency} />], [t("discount"), <Money key="d" value={c.discountAmount} currency={c.feeCurrency} />], [t("feeStatus"), t(c.feeStatus)], [t("createdBy"), c.createdBy === ctx.user.id ? ctx.user.fullName : ""]]} />
