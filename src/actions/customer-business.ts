@@ -78,22 +78,18 @@ export async function saveCustomerShareholder(fd: FormData) {
       role: optStr(fd.get("role")), status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.fullName) throw new FinanceError("invalid_input");
-    const [row] = await db.transaction(async (tx) => {
-      if (id) {
-        const [old] = await tx.select().from(customerShareholders).where(and(eq(customerShareholders.id, id), eq(customerShareholders.organizationId, ctx.org.id), eq(customerShareholders.customerId, customerId)));
-        if (!old) throw new FinanceError("not_found");
-        await tx.update(customerShareholders).set(data).where(eq(customerShareholders.id, id));
-        await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "UPDATE", entityType: "customer_shareholder", entityId: id, oldData: old, newData: data });
-        return [old] as never[];
-      }
-      const [created] = await tx.insert(customerShareholders).values(data).returning();
-      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "customer_shareholder", entityId: created.id, newData: created });
-      return [created] as never[];
-    });
-    return row ? { id: row.id } : {};
+    if (id) {
+      const [old] = await db.select().from(customerShareholders).where(and(eq(customerShareholders.id, id), eq(customerShareholders.organizationId, ctx.org.id), eq(customerShareholders.customerId, customerId)));
+      if (!old) throw new FinanceError("not_found");
+      await db.update(customerShareholders).set(data).where(eq(customerShareholders.id, id));
+      await audit(db, { orgId: ctx.org.id, userId: ctx.user.id, action: "UPDATE", entityType: "customer_shareholder", entityId: id, oldData: old, newData: data });
+      return { id };
+    }
+    const [created] = await db.insert(customerShareholders).values(data).returning();
+    await audit(db, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "customer_shareholder", entityId: created.id, newData: created });
+    return { id: created.id };
   });
 }
-
 export async function saveCustomerEmployee(fd: FormData) {
   return act(async () => {
     const ctx = await requireContext("customers.write");

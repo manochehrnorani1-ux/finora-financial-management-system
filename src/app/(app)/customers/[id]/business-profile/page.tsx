@@ -49,12 +49,20 @@ export default async function CustomerBusinessProfilePage({ params }: { params: 
     {name:"activity",label:l.activity},{name:"serviceTypes",label:l.services,type:"textarea",full:true},{name:"requiredCapital",label:l.capital,type:"number"},
     {name:"workingCapital",label:l.workingCapital,type:"number"},{name:"guaranteeAmount",label:l.guaranteeAmount,type:"number"},{name:"notes",label:l.notes,type:"textarea",full:true}
   ];
-  const personFields = (employee=false): Field[] => [
-    {name:"fullName",label:l.fullName,required:true},{name:"fatherName",label:l.father},{name:"grandfatherName",label:l.grandfather,...(!employee?{}:{})},
+  const shareholderFields: Field[] = [
+    {name:"fullName",label:l.fullName,required:true},{name:"fatherName",label:l.father},{name:"grandfatherName",label:l.grandfather},
     {name:"nationalId",label:l.nationalId},{name:"tin",label:l.tin},{name:"phone",label:l.phone},{name:"email",label:l.email,type:"email"},
     {name:"province",label:l.province},{name:"district",label:l.district},{name:"area",label:l.area},{name:"address",label:l.address,full:true},
     {name:"educationLevel",label:l.education},{name:"educationField",label:l.field},{name:"workExperienceYears",label:l.experience,type:"number"},
-    ...(employee ? [{name:"position",label:l.position},{name:"department",label:l.department},{name:"employmentDate",label:l.employment,type:"date"},{name:"salary",label:l.salary,type:"number"}] : [{name:"ownershipPercentage",label:l.ownership,type:"number"},{name:"shareValue",label:l.shareValue,type:"number"},{name:"role",label:l.role}]),
+    {name:"ownershipPercentage",label:l.ownership,type:"number"},{name:"shareValue",label:l.shareValue,type:"number"},{name:"role",label:l.role},
+    {name:"notes",label:l.notes,type:"textarea",full:true}
+  ];
+  const employeeFields: Field[] = [
+    {name:"fullName",label:l.fullName,required:true},{name:"fatherName",label:l.father},
+    {name:"nationalId",label:l.nationalId},{name:"tin",label:l.tin},{name:"phone",label:l.phone},{name:"email",label:l.email,type:"email"},
+    {name:"province",label:l.province},{name:"district",label:l.district},{name:"area",label:l.area},{name:"address",label:l.address,full:true},
+    {name:"educationLevel",label:l.education},{name:"educationField",label:l.field},{name:"workExperienceYears",label:l.experience,type:"number"},
+    {name:"position",label:l.position},{name:"department",label:l.department},{name:"employmentDate",label:l.employment,type:"date"},{name:"salary",label:l.salary,type:"number"},
     {name:"notes",label:l.notes,type:"textarea",full:true}
   ];
   const branchFields: Field[] = [
@@ -78,10 +86,10 @@ export default async function CustomerBusinessProfilePage({ params }: { params: 
       <Card title={l.license} actions={canWrite && <FormDialog title={l.add} triggerLabel={l.add} action={saveCustomerLicense} fields={licenseFields} hidden={{customerId:id}} wide />}>
         <Table headers={[l.licenseNo,l.issue,l.expiry,l.activity]} empty={l.noData} rows={licenses.map(x=>[x.licenseNumber,x.issueDate??"—",x.expiryDate??"—",x.activity??"—"])} />
       </Card>
-      <Card title={l.shareholders} actions={canWrite && <FormDialog title={l.add} triggerLabel={l.add} action={saveCustomerShareholder} fields={personFields(false)} hidden={{customerId:id}} wide />}>
+      <Card title={l.shareholders} actions={canWrite && <FormDialog title={l.add} triggerLabel={l.add} action={saveCustomerShareholder} fields={shareholderFields} hidden={{customerId:id}} wide />}>
         <Table headers={[l.fullName,l.nationalId,l.ownership,l.phone]} empty={l.noData} rows={shareholders.map(x=>[x.fullName,x.nationalId??"—",x.ownershipPercentage==null?"—":String(x.ownershipPercentage),x.phone??"—"])} />
       </Card>
-      <Card title={l.employees} actions={canWrite && <FormDialog title={l.add} triggerLabel={l.add} action={saveCustomerEmployee} fields={personFields(true)} hidden={{customerId:id}} wide />}>
+      <Card title={l.employees} actions={canWrite && <FormDialog title={l.add} triggerLabel={l.add} action={saveCustomerEmployee} fields={employeeFields} hidden={{customerId:id}} wide />}>
         <Table headers={[l.fullName,l.position,l.nationalId,l.phone]} empty={l.noData} rows={employees.map(x=>[x.fullName,x.position??"—",x.nationalId??"—",x.phone??"—"])} />
       </Card>
       <Card title={l.branches} actions={canWrite && <FormDialog title={l.add} triggerLabel={l.add} action={saveCustomerBranch} fields={branchFields} hidden={{customerId:id}} wide />}>
