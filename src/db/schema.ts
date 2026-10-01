@@ -147,6 +147,7 @@ export const services = pgTable(
     estimatedDays: integer("estimated_days"),
     publicOrder: integer("public_order").notNull().default(0),
     feeQuoteRequired: boolean("fee_quote_required").notNull().default(true),
+    workflowKey: text("workflow_key"),
     status: text("status").notNull().default("active"),
     isDemo: boolean("is_demo").notNull().default(false),
     createdAt: createdAt(),
@@ -171,6 +172,11 @@ export const cases = pgTable(
     discountAmount: money("discount_amount"),
     feeCurrency: text("fee_currency").notNull().default("AFN"),
     feeStatus: text("fee_status").notNull().default("unbilled"),
+    workflowKey: text("workflow_key"),
+    currentStepNo: integer("current_step_no").notNull().default(1),
+    nextAction: text("next_action"),
+    targetDate: date("target_date"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     notes: text("notes"),
     isDemo: boolean("is_demo").notNull().default(false),
     createdBy: uuid("created_by").references(() => profiles.id),
@@ -178,6 +184,33 @@ export const cases = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [uniqueIndex("cases_number_unique").on(t.organizationId, t.caseNumber), index("cases_org_status_idx").on(t.organizationId, t.status)],
+);
+
+export const caseWorkflowSteps = pgTable(
+  "case_workflow_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    caseId: uuid("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
+    stepNo: integer("step_no").notNull(),
+    stepKey: text("step_key").notNull(),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("pending"),
+    actionRequired: text("action_required"),
+    dueDate: date("due_date"),
+    amount: money("amount"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedBy: uuid("completed_by").references(() => profiles.id),
+    notes: text("notes"),
+    metadata: jsonb("metadata").notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("case_workflow_steps_case_step_unique").on(t.caseId, t.stepNo),
+    index("case_workflow_steps_org_case_idx").on(t.organizationId, t.caseId, t.stepNo),
+    index("case_workflow_steps_status_idx").on(t.organizationId, t.status, t.dueDate),
+  ],
 );
 
 export const documents = pgTable(
