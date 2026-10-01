@@ -148,17 +148,19 @@ export async function saveCase(fd: FormData) {
       let service: typeof services.$inferSelect | undefined;
       if (serviceId) {
         const [s] = await tx.select().from(services).where(and(eq(services.id, serviceId), eq(services.organizationId, ctx.org.id)));
-        if (!s) throw new FinanceError("invalid_input");
+        if (!s) throw new FinanceError("invalid_case_service");
         service = s;
       }
       if (responsibleEmployeeId) {
         const [member] = await tx.select({ id: organizationMembers.id }).from(organizationMembers).innerJoin(profiles, eq(organizationMembers.userId, profiles.id)).where(and(eq(organizationMembers.organizationId, ctx.org.id), eq(organizationMembers.userId, responsibleEmployeeId), eq(organizationMembers.status, "active")));
-        if (!member) throw new FinanceError("invalid_input");
+        if (!member) throw new FinanceError("invalid_case_employee");
       }
       const rawFee = str(fd.get("serviceFee"));
       const fee = rawFee ? num(fd.get("serviceFee")) : Number(service?.defaultPrice ?? 0);
       const discount = num(fd.get("discountAmount"));
-      if (fee < 0 || discount < 0 || discount > fee || !/^\\d{4}-\\d{2}-\\d{2}$/.test(openedAt)) throw new FinanceError("invalid_input");
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(openedAt)) throw new FinanceError("invalid_case_date");
+      if (!Number.isFinite(fee) || fee < 0) throw new FinanceError("invalid_case_fee");
+      if (!Number.isFinite(discount) || discount < 0 || discount > fee) throw new FinanceError("invalid_case_discount");
       const data = { customerId, serviceId, responsibleEmployeeId, priority, openedAt, serviceFee: fee, discountAmount: discount, feeCurrency: ctx.org.currency, notes: optStr(fd.get("notes")) };
       if (id) {
         const [old] = await tx.select().from(cases).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id))).for("update");
