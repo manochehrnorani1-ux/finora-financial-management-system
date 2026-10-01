@@ -139,6 +139,7 @@ export async function createGeneratedFormAction(fd: FormData) {
       const business = {
         shareholders: shareholderRows, shareholdersCount: shareholderRows.length, shareholdersSummary: shareholderSummary,
         employees: employeeRows, employeesCount: employeeRows.length,
+        employeesSummary: employeeRows.map((e) => [e.fullName, e.fatherName ?? "", e.nationalId ?? "", e.position ?? "", e.educationLevel ?? "", e.phone ?? ""].join(" | ")).join("\n"),
         branches: branchRows, branchesCount: branchRows.length, branchesSummary: branchSummary,
         bankAccounts: bankRows, bankAccountsCount: bankRows.length, bankAccountsSummary: bankSummary,
         guarantees: guaranteeRows, guarantorsSummary: guarantorSummary,
@@ -153,6 +154,7 @@ export async function createGeneratedFormAction(fd: FormData) {
         shareholdersSummary: shareholderSummary,
         employees: employeeRows,
         employeesCount: employeeRows.length,
+        employeesSummary: employeeRows.map((e) => [e.fullName, e.fatherName ?? "", e.nationalId ?? "", e.position ?? "", e.educationLevel ?? "", e.phone ?? ""].join(" | ")).join("\n"),
         branches: branchRows,
         branchesCount: branchRows.length,
         branchesSummary: branchSummary,
