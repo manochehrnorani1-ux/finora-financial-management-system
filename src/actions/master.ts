@@ -436,7 +436,7 @@ export async function updateCaseWorkflowStepAction(fd: FormData) {
 
       await tx.update(caseWorkflowSteps).set({
         dueDate,
-        amount,
+        ...(amount === null ? {} : { amount }),
         actionRequired,
         notes,
         updatedAt: new Date(),
