@@ -152,7 +152,7 @@ export const services = pgTable(
     isDemo: boolean("is_demo").notNull().default(false),
     createdAt: createdAt(),
   },
-  (t) => [index("services_org_idx").on(t.organizationId)],
+  (t) => [index("services_org_idx").on(t.organizationId), index("services_org_workflow_key_idx").on(t.organizationId, t.workflowKey)],
 );
 
 export const cases = pgTable(
@@ -183,7 +183,7 @@ export const cases = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("cases_number_unique").on(t.organizationId, t.caseNumber), index("cases_org_status_idx").on(t.organizationId, t.status)],
+  (t) => [uniqueIndex("cases_number_unique").on(t.organizationId, t.caseNumber), index("cases_org_status_idx").on(t.organizationId, t.status), index("cases_org_workflow_idx").on(t.organizationId, t.workflowKey, t.currentStepNo)],
 );
 
 export const caseWorkflowSteps = pgTable(
