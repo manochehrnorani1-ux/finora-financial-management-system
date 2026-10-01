@@ -17,6 +17,9 @@ export async function saveCustomer(fd: FormData) {
     const logoBytes = await readLogoUpload(logoFile);
     const data = {
       name: str(fd.get("name")),
+      englishName: optStr(fd.get("englishName")),
+      tradeName: optStr(fd.get("tradeName")),
+      tradeNameEn: optStr(fd.get("tradeNameEn")),
       fatherName: optStr(fd.get("fatherName")),
       phone: optStr(fd.get("phone")),
       email: optStr(fd.get("email")),
@@ -29,6 +32,9 @@ export async function saveCustomer(fd: FormData) {
       province: optStr(fd.get("province")),
       district: optStr(fd.get("district")),
       area: optStr(fd.get("area")),
+      market: optStr(fd.get("market")),
+      floor: optStr(fd.get("floor")),
+      shopNumber: optStr(fd.get("shopNumber")),
       notes: optStr(fd.get("notes")),
       status: str(fd.get("status")) || "active",
     };
