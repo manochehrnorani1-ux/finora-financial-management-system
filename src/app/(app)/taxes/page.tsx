@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { taxRules, taxTypes } from "@/db/schema";
@@ -45,7 +46,7 @@ export default async function TaxesPage({ searchParams }: { searchParams: SP }) 
     <>
       <PageHeader title={t("taxes")} subtitle="انواع مالیه، قواعد رسمی وزارت مالیه افغانستان و ریکاردهای مالیاتی ثبت‌شده" actions={<>
         {canWrite && <FormDialog title={t("taxTypes")} triggerLabel={`+ ${t("taxType")}`} action={saveTaxType} fields={[{ name: "name", label: t("name"), required: true }, { name: "code", label: t("code"), required: true }, { name: "description", label: t("description"), type: "textarea" }]} />}
-        <a href="/tax-settlements" className="rounded-lg bg-emerald-800 text-white px-3 py-2 text-sm font-medium">{t("taxRules")} / {t("taxSettlement")}</a>
+        <Link href="/tax-settlements" className="rounded-lg bg-emerald-800 text-white px-3 py-2 text-sm font-medium">{t("taxRules")} / {t("taxSettlement")}</Link>
       </>} />
       <TaxNav active="types" t={t} />
       <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs leading-6 text-emerald-950">{t("taxCalculationDisclaimer")} — تمام نرخ‌ها و فرمول‌ها مستقیماً از جدول قواعد رسمی وزارت مالیه (`mof.gov.af` / `ard.gov.af`) خوانده می‌شوند.</div>

@@ -1,9 +1,13 @@
 "use server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sum } from "drizzle-orm";
 import { db } from "@/db";
+<<<<<<< HEAD
 import { attachments, caseFiles, caseNotes, caseRequirements, caseTasks, casePlanSteps, cases, complianceEvents, contracts, customerLicenses, customerObligations, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, letters } from "@/db/schema";
 import { getCaseSnapshot, assertCaseReady, initializeCaseWorkflow } from "@/lib/case-workflows";
 import { isWorkflowKey } from "@/lib/case-workflow-definitions";
+=======
+import { attachments, caseFiles, caseNotes, caseWorkflowPayments, caseWorkflowSteps, cases, complianceEvents, contracts, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlementPayments, taxSettlements, letters } from "@/db/schema";
+>>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
 import { requireContext } from "@/lib/auth";
 import { audit, FinanceError, nextNumber } from "@/lib/finance";
 import { num, optStr, str } from "@/lib/format";
@@ -145,12 +149,54 @@ export async function saveCase(fd: FormData) {
     const licenseId = optStr(fd.get("licenseId"));
     const responsibleEmployeeId = optStr(fd.get("responsibleEmployeeId"));
     const openedAt = str(fd.get("openedAt")) || new Date().toISOString().slice(0, 10);
+<<<<<<< HEAD
     const dueDate = optStr(fd.get("dueDate"));
     const priority = ["normal", "high", "urgent"].includes(str(fd.get("priority"))) ? str(fd.get("priority")) : "normal";
     if (!serviceId || !/^\d{4}-\d{2}-\d{2}$/.test(openedAt) || (dueDate && (dueDate < openedAt || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)))) throw new FinanceError("invalid_input");
+=======
+    const priorityValue = str(fd.get("priority"));
+    const priority = ["normal", "high", "urgent"].includes(priorityValue)
+      ? priorityValue
+      : "normal";
+
+    const isValidIsoDate = (value: string) => {
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+      const [year, month, day] = value.split("-").map(Number);
+      const date = new Date(Date.UTC(year, month - 1, day));
+      return (
+        Number.isInteger(year) &&
+        Number.isInteger(month) &&
+        Number.isInteger(day) &&
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
+      );
+    };
+
+    if (!customerId) throw new FinanceError("customer_not_found");
+    if (!isValidIsoDate(openedAt)) throw new FinanceError("invalid_case_date");
+
+    const rawFee = str(fd.get("serviceFee"));
+    const rawDiscount = str(fd.get("discountAmount"));
+    const fee = rawFee === "" ? null : Number(rawFee.replace(/,/g, ""));
+    const discount = rawDiscount === "" ? 0 : Number(rawDiscount.replace(/,/g, ""));
+
+    if (fee !== null && !Number.isFinite(fee)) {
+      throw new FinanceError("invalid_case_fee");
+    }
+    if (!Number.isFinite(discount) || discount < 0) {
+      throw new FinanceError("invalid_case_discount");
+    }
+
+>>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
     return db.transaction(async (tx) => {
-      const [customer] = await tx.select({ id: customers.id }).from(customers).where(and(eq(customers.id, customerId), eq(customers.organizationId, ctx.org.id)));
+      const [customer] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.id, customerId), eq(customers.organizationId, ctx.org.id)));
+
       if (!customer) throw new FinanceError("customer_not_found");
+<<<<<<< HEAD
       const [service] = await tx.select().from(services).where(and(eq(services.id, serviceId), eq(services.organizationId, ctx.org.id), eq(services.status, "active")));
       if (!service) throw new FinanceError("invalid_input");
       if (parentCaseId) {
@@ -160,8 +206,23 @@ export async function saveCase(fd: FormData) {
       if (licenseId) {
         const [lic] = await tx.select({ id: customerLicenses.id }).from(customerLicenses).where(and(eq(customerLicenses.id, licenseId), eq(customerLicenses.organizationId, ctx.org.id), eq(customerLicenses.customerId, customerId)));
         if (!lic) throw new FinanceError("invalid_input");
+=======
+
+      let service: typeof services.$inferSelect | undefined;
+
+      if (serviceId) {
+        const [s] = await tx
+          .select()
+          .from(services)
+          .where(and(eq(services.id, serviceId), eq(services.organizationId, ctx.org.id)));
+
+        if (!s) throw new FinanceError("invalid_case_service");
+        service = s;
+>>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
       }
+
       if (responsibleEmployeeId) {
+<<<<<<< HEAD
         const [member] = await tx.select({ id: organizationMembers.id }).from(organizationMembers).where(and(eq(organizationMembers.organizationId, ctx.org.id), eq(organizationMembers.userId, responsibleEmployeeId), eq(organizationMembers.status, "active")));
         if (!member) throw new FinanceError("invalid_input");
       }
@@ -170,9 +231,53 @@ export async function saveCase(fd: FormData) {
       const discount = num(fd.get("discountAmount"));
       if (!Number.isFinite(fee) || !Number.isFinite(discount) || fee < 0 || discount < 0 || discount > fee) throw new FinanceError("invalid_amount");
       const data = { customerId, serviceId, serviceKey: service.serviceKey ?? "other-admin", responsibleEmployeeId, priority, openedAt, dueDate, serviceFee: fee, discountAmount: discount, feeCurrency: ctx.org.currency, notes: optStr(fd.get("notes")) };
+=======
+        const [member] = await tx
+          .select({ id: organizationMembers.id })
+          .from(organizationMembers)
+          .innerJoin(profiles, eq(organizationMembers.userId, profiles.id))
+          .where(
+            and(
+              eq(organizationMembers.organizationId, ctx.org.id),
+              eq(organizationMembers.userId, responsibleEmployeeId),
+              eq(organizationMembers.status, "active"),
+            ),
+          );
+
+        if (!member) throw new FinanceError("invalid_case_employee");
+      }
+
+      const finalFee = fee === null ? Number(service?.defaultPrice ?? 0) : fee;
+
+      if (!Number.isFinite(finalFee) || finalFee < 0) {
+        throw new FinanceError("invalid_case_fee");
+      }
+      if (discount > finalFee) {
+        throw new FinanceError("invalid_case_discount");
+      }
+
+      const data = {
+        customerId,
+        serviceId,
+        responsibleEmployeeId,
+        priority,
+        openedAt,
+        serviceFee: finalFee,
+        discountAmount: discount,
+        feeCurrency: ctx.org.currency,
+        notes: optStr(fd.get("notes")),
+      };
+
+>>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
       if (id) {
-        const [old] = await tx.select().from(cases).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id))).for("update");
+        const [old] = await tx
+          .select()
+          .from(cases)
+          .where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id)))
+          .for("update");
+
         if (!old) throw new FinanceError("not_found");
+<<<<<<< HEAD
         if (["closed", "cancelled"].includes(old.status) || old.outcomeStatus) throw new FinanceError("cannot_edit_final");
         if (old.customerId !== customerId || (old.parentCaseId && old.parentCaseId !== parentCaseId)) throw new FinanceError("case_has_history");
         if (old.feeStatus !== "unbilled" && (fee !== Number(old.serviceFee) || discount !== Number(old.discountAmount))) throw new FinanceError("cannot_edit_final");
@@ -192,11 +297,90 @@ export async function saveCase(fd: FormData) {
       if (isWorkflowKey(data.serviceKey)) await initializeCaseWorkflow(tx, ctx.org.id, row.id, data.serviceKey, service);
       if (data.notes) await tx.insert(caseNotes).values({ organizationId: ctx.org.id, caseId: row.id, body: data.notes, visibility: "internal", createdBy: ctx.user.id });
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "case", entityId: row.id, newData: row });
+=======
+
+        if (
+          old.feeStatus !== "unbilled" &&
+          (finalFee !== Number(old.serviceFee) || discount !== Number(old.discountAmount))
+        ) {
+          throw new FinanceError("cannot_edit_final");
+        }
+
+        await tx.update(cases).set({ ...data, updatedAt: new Date() }).where(eq(cases.id, id));
+
+        await audit(tx, {
+          orgId: ctx.org.id,
+          userId: ctx.user.id,
+          action: "UPDATE",
+          entityType: "case",
+          entityId: id,
+          oldData: old,
+          newData: data,
+        });
+
+        return { id };
+      }
+
+      const workflowCatalog = (service?.workflowSteps ?? {}) as Record<string, unknown>;
+      const workflowSteps = workflowCatalog.fa ?? workflowCatalog.en ?? [];
+      const titles = Array.isArray(workflowSteps) ? workflowSteps.filter((x): x is string => typeof x === "string") : [];
+
+      const [row] = await tx
+        .insert(cases)
+        .values({
+          ...data,
+          organizationId: ctx.org.id,
+          caseNumber: await nextNumber(tx, ctx.org.id, "case"),
+          status: "new",
+          feeStatus: "unbilled",
+          workflowKey: service?.workflowKey ?? null,
+          currentStepNo: 1,
+          nextAction: titles[0] ?? null,
+          createdBy: ctx.user.id,
+          isDemo: ctx.org.isDemo,
+        })
+        .returning();
+
+      if (titles.length > 0) {
+        await tx.insert(caseWorkflowSteps).values(
+          titles.map((title, index) => ({
+            organizationId: ctx.org.id,
+            caseId: row.id,
+            stepNo: index + 1,
+            stepKey: (service?.workflowKey ?? "case") + "_" + (index + 1),
+            title,
+            status: index === 0 ? "active" : "pending",
+            actionRequired: title,
+            paidAmount: 0,
+            remainingAmount: 0,
+          })),
+        );
+      }
+
+      if (data.notes) {
+        await tx.insert(caseNotes).values({
+          organizationId: ctx.org.id,
+          caseId: row.id,
+          body: data.notes,
+          visibility: "internal",
+          createdBy: ctx.user.id,
+        });
+      }
+
+      await audit(tx, {
+        orgId: ctx.org.id,
+        userId: ctx.user.id,
+        action: "CREATE",
+        entityType: "case",
+        entityId: row.id,
+        newData: row,
+      });
+
+>>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
       return { id: row.id };
     });
   });
 }
-
 const CASE_TRANSITIONS: Record<string, { from: string[]; to: string; approve?: boolean }> = {
   review: { from: ["new"], to: "reviewing" },
   missing: { from: ["reviewing", "in_progress", "awaiting_review"], to: "missing_documents" },
@@ -226,6 +410,210 @@ export async function transitionCase(id: string, action: string) {
       }
       await tx.update(cases).set({ status: tr.to, closedAt: tr.to === "closed" ? new Date().toISOString().slice(0, 10) : row.closedAt, updatedAt: new Date() }).where(eq(cases.id, id));
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: tr.approve ? "APPROVE" : tr.to === "cancelled" ? "CANCEL" : "UPDATE", entityType: "case", entityId: id, oldData: { status: row.status }, newData: { status: tr.to } });
+    });
+  });
+}
+
+export async function completeCaseWorkflowStepAction(id: string) {
+  return act(async () => {
+    const ctx = await requireContext("cases.write");
+    await db.transaction(async (tx) => {
+      const [step] = await tx.select().from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.id, id), eq(caseWorkflowSteps.organizationId, ctx.org.id))).for("update");
+      if (!step) throw new FinanceError("not_found");
+      if (step.status !== "active") throw new FinanceError("invalid_transition");
+
+      const [row] = await tx.select().from(cases)
+        .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id))).for("update");
+      if (!row) throw new FinanceError("not_found");
+
+      if (row.workflowKey === "tax_settlement" && step.stepNo === 5) {
+        const settlements = await tx.select({
+          id: taxSettlements.id, taxAmount: taxSettlements.taxAmount,
+          paidAmount: taxSettlements.paidAmount, remainingAmount: taxSettlements.remainingAmount,
+        }).from(taxSettlements)
+          .where(and(eq(taxSettlements.caseId, row.id), eq(taxSettlements.organizationId, ctx.org.id))).for("update");
+        if (settlements.length === 0) throw new FinanceError("tax_settlement_required");
+        if (settlements.length > 1) throw new FinanceError("tax_settlement_ambiguous");
+        const settlement = settlements[0];
+        if (Number(settlement.remainingAmount ?? 0) > 0) throw new FinanceError("workflow_payment_required");
+        await tx.update(caseWorkflowSteps).set({
+          amount: Number(settlement.taxAmount ?? 0),
+          paidAmount: Number(settlement.paidAmount ?? 0),
+          remainingAmount: Math.max(0, Number(settlement.remainingAmount ?? 0)),
+          updatedAt: new Date(),
+        }).where(eq(caseWorkflowSteps.id, step.id));
+      } else if (Number(step.amount ?? 0) > 0 && Number(step.paidAmount ?? 0) < Number(step.amount ?? 0)) {
+        throw new FinanceError("workflow_payment_required");
+      }
+
+      const [next] = await tx.select().from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.caseId, row.id), eq(caseWorkflowSteps.organizationId, ctx.org.id), eq(caseWorkflowSteps.stepNo, step.stepNo + 1)));
+
+      await tx.update(caseWorkflowSteps).set({
+        status: "completed", completedAt: new Date(), completedBy: ctx.user.id, updatedAt: new Date(),
+      }).where(eq(caseWorkflowSteps.id, step.id));
+
+      if (next) {
+        await tx.update(caseWorkflowSteps).set({ status: "active", updatedAt: new Date() }).where(eq(caseWorkflowSteps.id, next.id));
+        await tx.update(cases).set({
+          status: row.status === "new" ? "in_progress" : row.status,
+          currentStepNo: next.stepNo, nextAction: next.actionRequired ?? next.title,
+          targetDate: next.dueDate, updatedAt: new Date(),
+        }).where(eq(cases.id, row.id));
+      } else {
+        await tx.update(cases).set({
+          status: "ready_for_delivery", currentStepNo: step.stepNo, nextAction: null,
+          targetDate: null, completedAt: new Date(), updatedAt: new Date(),
+        }).where(eq(cases.id, row.id));
+      }
+
+      await audit(tx, {
+        orgId: ctx.org.id, userId: ctx.user.id, action: "UPDATE",
+        entityType: "case_workflow_step", entityId: step.id,
+        oldData: { status: step.status, caseId: step.caseId, stepNo: step.stepNo },
+        newData: { status: "completed", nextStepNo: next?.stepNo ?? null },
+      });
+    });
+  });
+}
+
+export async function recordCaseWorkflowPaymentAction(fd: FormData) {
+  return act(async () => {
+    const ctx = await requireContext("cases.write");
+    const stepId = str(fd.get("stepId"));
+    const amount = Number(str(fd.get("amount")).replace(/,/g, ""));
+    const paymentDate = str(fd.get("paymentDate")) || new Date().toISOString().slice(0, 10);
+    const paymentMethod = optStr(fd.get("paymentMethod"));
+    const referenceNumber = optStr(fd.get("referenceNumber"));
+    const notes = optStr(fd.get("notes"));
+    if (!stepId || !Number.isFinite(amount) || amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) {
+      throw new FinanceError("invalid_workflow_payment");
+    }
+
+    return db.transaction(async (tx) => {
+      const [step] = await tx.select().from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.id, stepId), eq(caseWorkflowSteps.organizationId, ctx.org.id))).for("update");
+      if (!step) throw new FinanceError("not_found");
+      if (step.status !== "active") throw new FinanceError("invalid_transition");
+
+      const [row] = await tx.select().from(cases)
+        .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id))).for("update");
+      if (!row) throw new FinanceError("not_found");
+
+      let due = Number(step.amount ?? 0);
+      let paid = Number(step.paidAmount ?? 0);
+      let settlementId: string | null = null;
+
+      if (row.workflowKey === "tax_settlement" && step.stepNo === 5) {
+        const settlements = await tx.select({
+          id: taxSettlements.id, taxAmount: taxSettlements.taxAmount,
+        }).from(taxSettlements)
+          .where(and(eq(taxSettlements.caseId, row.id), eq(taxSettlements.organizationId, ctx.org.id))).for("update");
+        if (settlements.length === 0) throw new FinanceError("tax_settlement_required");
+        if (settlements.length > 1) throw new FinanceError("tax_settlement_ambiguous");
+
+        settlementId = settlements[0].id;
+        due = Number(settlements[0].taxAmount ?? 0);
+
+        const [paidRow] = await tx.select({ paid: sum(taxSettlementPayments.amount) })
+          .from(taxSettlementPayments)
+          .where(and(eq(taxSettlementPayments.organizationId, ctx.org.id), eq(taxSettlementPayments.settlementId, settlementId)));
+        paid = Number(paidRow?.paid ?? 0);
+      }
+
+      if (due <= 0 || paid + amount > due) throw new FinanceError("amount_exceeds_due");
+
+      const [payment] = await tx.insert(caseWorkflowPayments).values({
+        organizationId: ctx.org.id, caseId: step.caseId, workflowStepId: step.id,
+        amount, currency: ctx.org.currency, paymentDate, paymentMethod,
+        referenceNumber, notes, recordedBy: ctx.user.id,
+      }).returning();
+
+      const newPaid = paid + amount;
+      const remaining = Math.max(0, due - newPaid);
+
+      if (settlementId) {
+        const [taxPayment] = await tx.insert(taxSettlementPayments).values({
+          organizationId: ctx.org.id, settlementId, amount, currency: ctx.org.currency,
+          paymentDate, officialReceiptNumber: referenceNumber, notes, recordedBy: ctx.user.id,
+        }).returning();
+
+        const [updatedSettlement] = await tx.update(taxSettlements).set({
+          paidAmount: newPaid, remainingAmount: remaining, updatedAt: new Date(),
+        }).where(and(eq(taxSettlements.id, settlementId), eq(taxSettlements.organizationId, ctx.org.id))).returning();
+        if (!updatedSettlement) throw new FinanceError("not_found");
+
+        await audit(tx, {
+          orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE",
+          entityType: "tax_settlement_payment", entityId: taxPayment.id,
+          newData: { settlementId, caseId: step.caseId, amount, paidAmount: newPaid, remainingAmount: remaining },
+        });
+      }
+
+      await tx.update(caseWorkflowSteps).set({
+        amount: due, paidAmount: newPaid, remainingAmount: remaining, updatedAt: new Date(),
+      }).where(eq(caseWorkflowSteps.id, step.id));
+
+      await audit(tx, {
+        orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE",
+        entityType: "case_workflow_payment", entityId: payment.id,
+        newData: {
+          stepId: step.id, caseId: step.caseId, amount, paidAmount: newPaid,
+          remainingAmount: remaining, source: settlementId ? "tax_settlement" : "workflow", settlementId,
+        },
+      });
+      return { id: payment.id, settlementId };
+    });
+  });
+}
+
+export async function updateCaseWorkflowStepAction(fd: FormData) {
+  return act(async () => {
+    const ctx = await requireContext("cases.write");
+    const id = str(fd.get("id"));
+    const dueDate = optStr(fd.get("dueDate"));
+    const amountRaw = str(fd.get("amount"));
+    const amount = amountRaw === "" ? null : Number(amountRaw.replace(/,/g, ""));
+    const actionRequired = optStr(fd.get("actionRequired"));
+    const notes = optStr(fd.get("notes"));
+    if (!id || (amount !== null && (!Number.isFinite(amount) || amount < 0))) throw new FinanceError("invalid_input");
+
+    await db.transaction(async (tx) => {
+      const [step] = await tx.select().from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.id, id), eq(caseWorkflowSteps.organizationId, ctx.org.id)))
+        .for("update");
+      if (!step) throw new FinanceError("not_found");
+
+      const [row] = await tx.select({ id: cases.id }).from(cases)
+        .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id)));
+      if (!row) throw new FinanceError("not_found");
+
+      await tx.update(caseWorkflowSteps).set({
+        dueDate,
+        ...(amount === null ? {} : { amount }),
+        actionRequired,
+        notes,
+        updatedAt: new Date(),
+      }).where(eq(caseWorkflowSteps.id, id));
+
+      if (step.status === "active") {
+        await tx.update(cases).set({
+          targetDate: dueDate,
+          nextAction: actionRequired || step.title,
+          updatedAt: new Date(),
+        }).where(eq(cases.id, row.id));
+      }
+
+      await audit(tx, {
+        orgId: ctx.org.id,
+        userId: ctx.user.id,
+        action: "UPDATE",
+        entityType: "case_workflow_step",
+        entityId: id,
+        oldData: { dueDate: step.dueDate, amount: step.amount, actionRequired: step.actionRequired },
+        newData: { dueDate, amount, actionRequired, notes },
+      });
     });
   });
 }
