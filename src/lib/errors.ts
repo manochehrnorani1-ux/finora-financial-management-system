@@ -9,6 +9,12 @@ export const ERROR_MESSAGES: Record<string, [string, string, string]> = {
   not_found: ["رکورد یافت نشد", "ریکارډ ونه موندل شو", "Record not found"],
   invalid_amount: ["مبلغ نامعتبر است", "مبلغ ناسم دی", "Invalid amount"],
   invalid_input: ["معلومات وارد شده نامعتبر است", "ورودي معلومات ناسم دي", "Invalid input"],
+  invalid_case_date: ["تاریخ افتتاح دوسیه نامعتبر است", "د دوسیې د پرانیستلو نېټه ناسم ده", "Invalid case opening date"],
+  invalid_case_fee: ["مبلغ خدمات نامعتبر است", "د خدمت فیس ناسم دی", "Invalid case service fee"],
+  invalid_case_discount: ["مبلغ تخفیف نامعتبر است یا از فیس بیشتر است", "د تخفیف مبلغ ناسم دی یا له فیس څخه زیات دی", "Invalid case discount"],
+  invalid_case_service: ["خدمت انتخاب‌شده معتبر نیست", "ټاکل شوی خدمت ناسم دی", "Selected service is invalid"],
+  invalid_case_employee: ["کارمند مسئول معتبر نیست", "مسئول کارکوونکی ناسم دی", "Responsible employee is invalid"],
+
   already_finalized: ["این رکورد قبلاً نهایی شده است", "دا ریکارډ مخکې نهایي شوی", "Record already finalized"],
   already_posted: ["این سند قبلاً پست شده است", "دا سند مخکې پوسټ شوی", "Entry already posted"],
   not_posted: ["فقط اسناد پست شده قابل معکوس‌سازی هستند", "یوازې پوسټ شوي اسناد معکوس کېدای شي", "Only posted entries can be reversed"],
