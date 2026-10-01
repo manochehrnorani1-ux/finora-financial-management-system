@@ -95,7 +95,7 @@ export function ActionButton({
           if (r.ok) {
             toast("success", successMessage ?? t("success"));
             router.refresh();
-          } else toast("error", errText(r.error));
+          } else toast("error", r.message ? `${errText(r.error)}: ${r.message}` : errText(r.error));
         });
       }}
     >
