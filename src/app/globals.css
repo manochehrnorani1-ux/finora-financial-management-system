@@ -139,3 +139,6 @@ select.input {
   .print-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .print-table { font-size: 8pt; }
 }
+
+@page landscape { size: A4 landscape; margin: 8mm 10mm; }
+@media print { .print-landscape { page: landscape; } }
