@@ -98,18 +98,25 @@ export async function createGeneratedFormAction(fd: FormData) {
     const ctx = await requireContext("official_forms.write");
     const formId = str(fd.get("formId"));
     const caseId = optStr(fd.get("caseId"));
+    const requestedCustomerId = optStr(fd.get("customerId"));
     return db.transaction(async (tx) => {
       const [form] = await tx.select().from(officialForms).where(and(eq(officialForms.id, formId), eq(officialForms.organizationId, ctx.org.id)));
       if (!form) throw new FinanceError("not_found");
       let customerRow: Record<string, unknown> = {};
       let caseRow: Record<string, unknown> = {};
-      let customerId: string | null = null;
+      let customerId: string | null = requestedCustomerId;
       if (caseId) {
         const [joined] = await tx.select({ c: cases, customer: customers }).from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).where(and(eq(cases.id, caseId), eq(cases.organizationId, ctx.org.id)));
         if (!joined) throw new FinanceError("not_found");
         customerRow = joined.customer as unknown as Record<string, unknown>;
         caseRow = joined.c as unknown as Record<string, unknown>;
         customerId = joined.c.customerId;
+      }
+      if (!customerId) throw new FinanceError("invalid_input");
+      if (!Object.keys(customerRow).length) {
+        const [customer] = await tx.select().from(customers).where(and(eq(customers.id, customerId), eq(customers.organizationId, ctx.org.id)));
+        if (!customer) throw new FinanceError("not_found");
+        customerRow = customer as unknown as Record<string, unknown>;
       }
       const branchId = optStr(fd.get("branchId"));
       const employeeId = optStr(fd.get("employeeId"));
@@ -138,6 +145,25 @@ export async function createGeneratedFormAction(fd: FormData) {
         primaryLicense, selectedBranch: selectedBranch ? { ...selectedBranch, representative: selectedRep } : null,
         selectedEmployee,
       };
+      const enrichedCustomer = {
+        ...customerRow,
+        primaryLicense,
+        shareholders: shareholderRows,
+        shareholdersCount: shareholderRows.length,
+        shareholdersSummary: shareholderSummary,
+        employees: employeeRows,
+        employeesCount: employeeRows.length,
+        branches: branchRows,
+        branchesCount: branchRows.length,
+        branchesSummary: branchSummary,
+        bankAccounts: bankRows,
+        bankAccountsCount: bankRows.length,
+        bankAccountsSummary: bankSummary,
+        guarantees: guaranteeRows,
+        guarantorsSummary: guarantorSummary,
+        selectedBranch: selectedBranch ? { ...selectedBranch, representative: selectedRep } : null,
+        selectedEmployee,
+      };
       const mergedFields = mergeZipFields(form.formKey, form.fields as never);
       const fieldList = mergedFields as { key: string; label: string; required?: boolean }[];
       const baseMapping = form.fieldMapping as Record<string, string>;
@@ -147,7 +173,7 @@ export async function createGeneratedFormAction(fd: FormData) {
       let missing = false;
       for (const f of fieldList) {
         const source = mapping[f.key];
-        const value = source ? sourceValue(source, customerRow, caseRow, business) : null;
+        const value = source ? sourceValue(source, enrichedCustomer, caseRow, business) : null;
         values[f.key] = value;
         if (f.required && (value === null || value === "" || (typeof value === "number" && value <= 0))) missing = true;
       }
