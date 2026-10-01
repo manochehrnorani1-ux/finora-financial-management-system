@@ -241,7 +241,7 @@ export async function seedDemoOrganization(tx: Tx, ownerId: string) {
   return org;
 }
 
-export const DEFAULT_ADMIN = { email: "admin@finora.af", password: "Admin@123", name: "مدیر سیستم" };
+export const DEFAULT_ADMIN = {\n  email: "admin@finora.af",\n  password: process.env.FINORA_BOOTSTRAP_PASSWORD ?? "",\n  name: "مدیر سیستم",\n};
 
 /** First-run initialization: system roles, default admin, production org and demo org. */
 export async function ensureBootstrap() {
