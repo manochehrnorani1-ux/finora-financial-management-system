@@ -20,6 +20,8 @@ select.input {
   @apply pe-8;
 }
 
+@page { size: A4; margin: 12mm; }
+
 @media print {
   body {
     background: white;
@@ -30,4 +32,8 @@ select.input {
   main {
     padding: 0 !important;
   }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  section { page-break-inside: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
 }
