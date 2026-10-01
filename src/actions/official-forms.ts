@@ -170,17 +170,25 @@ export async function createGeneratedFormAction(fd: FormData) {
       const zipMapping = Object.fromEntries(mergedFields.filter((f) => f.mapping).map((f) => [f.key, f.mapping!]));
       const mapping = { ...baseMapping, ...zipMapping };
       const values: Record<string, unknown> = {};
-      let missing = false;
+      const missingLabels: string[] = [];
       for (const f of fieldList) {
         const source = mapping[f.key];
         const value = source ? sourceValue(source, enrichedCustomer, caseRow, business) : null;
         values[f.key] = value;
-        if (f.required && (value === null || value === "" || (typeof value === "number" && value <= 0))) missing = true;
+        if (!source && f.required) missingLabels.push(`${f.label} (mapping)`);
+        else if (f.required && (value === null || value === "" || (typeof value === "number" && value <= 0))) missingLabels.push(f.label);
       }
       values._zipBusiness = business;
+      if (missingLabels.length > 0) {
+        return { ok: false, error: "form_incomplete", message: missingLabels.join("، ") };
+      }
       const allMapped = fieldList.length > 0 && fieldList.every((f) => Boolean(mapping[f.key]));
+      if (!allMapped) {
+        const unmapped = fieldList.filter((f) => !mapping[f.key]).map((f) => f.label);
+        return { ok: false, error: "form_incomplete", message: unmapped.join("، ") };
+      }
       const internal = !form.isOfficial;
-      const matchStatus = !fieldList.length || !allMapped || missing ? "MISSING_FIELD" : internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
+      const matchStatus = internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
       const internalNumber = await nextNumber(tx, ctx.org.id, "generated_form");
       const [row] = await tx.insert(generatedForms).values({
         organizationId: ctx.org.id,
