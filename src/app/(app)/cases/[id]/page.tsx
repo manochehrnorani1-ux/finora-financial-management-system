@@ -120,7 +120,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                   </div>
                 )}
               </div>
-            })}
+            )})}
           </div>
         </Card>
       )}
