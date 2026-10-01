@@ -30,7 +30,7 @@ The application schema is defined in `src/db/schema.ts`.
 
 The application performs an idempotent bootstrap from the authentication entry point. It creates system permissions and roles, a production organization, a clearly marked demo organization, chart of accounts, tax catalog, and demo data.
 
-First-run bootstrap administrator:\n\n- Email: `admin@finora.af`\n- Password: configured through `FINORA_BOOTSTRAP_PASSWORD`\n\nSet this value before the first application login. The application does not ship with a production default password.
+First-run bootstrap administrator:\n\n- Email: `admin@finora.af`\n- Password: configured through `FINORA_INIT_KEY`\n\nSet this value before the first application login. The application does not ship with a production default password.
 
 ## Main modules
 
