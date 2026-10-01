@@ -19,9 +19,10 @@ export default async function OfficialFormsPage({ searchParams }: { searchParams
   const q = await searchParams;
   const caseId = sp1(q.caseId);
   await db.transaction((tx) => ensurePublicWebsite(tx, ctx.org.id, ctx.user.id));
-  const [forms, caseOptions, branchOptions, employeeOptions] = await Promise.all([
+  const [forms, caseOptions, customerOptions, branchOptions, employeeOptions] = await Promise.all([
     db.select().from(officialForms).where(eq(officialForms.organizationId, ctx.org.id)).orderBy(officialForms.agency, officialForms.formKey, desc(officialForms.version)),
     db.select({ c: cases, customer: customers.name }).from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).where(eq(cases.organizationId, ctx.org.id)).orderBy(desc(cases.createdAt)).limit(300),
+    db.select({ id: customers.id, code: customers.customerCode, name: customers.name }).from(customers).where(and(eq(customers.organizationId, ctx.org.id), eq(customers.status, "active"))).orderBy(customers.name).limit(500),
     db.select({ id: customerBranches.id, customerId: customerBranches.customerId, label: customerBranches.name, number: customerBranches.branchNumber }).from(customerBranches).where(eq(customerBranches.organizationId, ctx.org.id)).orderBy(customerBranches.branchNumber),
     db.select({ id: customerEmployees.id, customerId: customerEmployees.customerId, label: customerEmployees.fullName, position: customerEmployees.position }).from(customerEmployees).where(eq(customerEmployees.organizationId, ctx.org.id)).orderBy(customerEmployees.fullName),
   ]);
@@ -66,6 +67,7 @@ export default async function OfficialFormsPage({ searchParams }: { searchParams
               {ctx.can("official_forms.verify") && f.isOfficial && f.verificationStatus !== "verified" && <ActionButton action={verifyOfficialFormAction} args={[f.id]} label={t("verify")} variant="warning" confirm={t("legalReviewRequired")} />}
               {ctx.can("official_forms.write") && (
                 <FormDialog title={t("generateForm")} triggerLabel={t("generateForm")} triggerVariant="secondary" triggerSize="sm" action={createGeneratedFormAction} hidden={{ formId: f.id }} successPath="/generated-forms/{id}" fields={[
+                  { name: "customerId", label: t("customer"), type: "select", required: true, options: customerOptions.map((c) => ({ value: c.id, label: `${c.code} — ${c.name}` })) },
                   { name: "caseId", label: t("case"), type: "select", defaultValue: caseId, options: caseOptions.map((c) => ({ value: c.c.id, label: `${c.c.caseNumber} — ${c.customer}` })) },
                   { name: "branchId", label: "نمایندگی مورد نظر", type: "select", options: branchOptions.map((b) => ({ value: b.id, label: `${b.number ?? "—"} — ${b.label ?? "نمایندگی"}` })) },
                   { name: "employeeId", label: "کارمند/نماینده مورد نظر", type: "select", options: employeeOptions.map((e) => ({ value: e.id, label: `${e.label} — ${e.position ?? ""}` })) },
