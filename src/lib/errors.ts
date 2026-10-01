@@ -9,6 +9,7 @@ export const ERROR_MESSAGES: Record<string, [string, string, string]> = {
   not_found: ["رکورد یافت نشد", "ریکارډ ونه موندل شو", "Record not found"],
   invalid_amount: ["مبلغ نامعتبر است", "مبلغ ناسم دی", "Invalid amount"],
   invalid_input: ["معلومات وارد شده نامعتبر است", "ورودي معلومات ناسم دي", "Invalid input"],
+  form_incomplete: ["معلومات فورم کامل نیست", "د فورم معلومات بشپړ نه دي", "Form information is incomplete"],
   // Case validation errors
   invalid_case_date: ["تاریخ افتتاح دوسیه نامعتبر است", "د دوسیې د پرانیستلو نېټه ناسم ده", "Invalid case opening date"],
   invalid_case_fee: ["مبلغ خدمات نامعتبر است", "د خدمت فیس ناسم دی", "Invalid case service fee"],
