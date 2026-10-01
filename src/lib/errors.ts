@@ -29,6 +29,8 @@ export const ERROR_MESSAGES: Record<string, [string, string, string]> = {
   cash_account_not_found: ["حساب صندوق یافت نشد یا غیرفعال است", "د صندوق حساب ونه موندل شو", "Cash account not found or inactive"],
   bank_account_not_found: ["حساب بانکی یافت نشد یا غیرفعال است", "بانکي حساب ونه موندل شو", "Bank account not found or inactive"],
   same_account: ["حساب مبدأ و مقصد نمی‌تواند یکی باشد", "سرچینه او موخه یو شان نه شي کېدای", "Source and destination cannot be the same"],
+  workflow_payment_required: ["این مرحله تا تکمیل پرداخت قابل نهایی‌سازی نیست", "دا پړاو تر بشپړې تادیې مخکې نه شي نهایي کېدای", "This workflow step cannot be completed until its required payment is fully settled"],
+  invalid_workflow_payment: ["مبلغ پرداخت مرحله نامعتبر است", "د پړاو د تادیې مبلغ ناسم دی", "Invalid workflow payment amount"],
   invalid_transition: ["این تغییر وضعیت مجاز نیست", "دا د حالت بدلون جواز نه لري", "This status transition is not allowed"],
   invalid_credentials: ["ایمیل یا رمز عبور نادرست است", "بریښنالیک یا پټنوم ناسم دی", "Invalid email or password"],
   email_exists: ["این ایمیل قبلاً ثبت شده است", "دا بریښنالیک مخکې ثبت شوی", "Email already registered"],
