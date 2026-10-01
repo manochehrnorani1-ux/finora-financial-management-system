@@ -241,10 +241,15 @@ export async function seedDemoOrganization(tx: Tx, ownerId: string) {
   return org;
 }
 
-export const DEFAULT_ADMIN = { email: "admin@finora.af", password: "Admin@123", name: "مدیر سیستم" };
+export const DEFAULT_ADMIN = {
+  email: "admin@finora.af",
+  password: process.env.FINORA_INIT_KEY ?? "",
+  name: "مدیر سیستم",
+};
 
 /** First-run initialization: system roles, default admin, production org and demo org. */
 export async function ensureBootstrap() {
+  if (!process.env.FINORA_INIT_KEY) throw new Error("FINORA_INIT_KEY is required before first-run bootstrap");
   await ensureSystemRoles();
   const [any] = await db.select({ id: profiles.id }).from(profiles).limit(1);
   if (any) {
