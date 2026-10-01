@@ -1,7 +1,7 @@
 "use server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { attachments, caseFiles, caseNotes, cases, complianceEvents, contracts, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, letters } from "@/db/schema";
+import { attachments, caseFiles, caseNotes, caseWorkflowSteps, cases, complianceEvents, contracts, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, letters } from "@/db/schema";
 import { requireContext } from "@/lib/auth";
 import { audit, FinanceError, nextNumber } from "@/lib/finance";
 import { num, optStr, str } from "@/lib/format";
@@ -263,6 +263,11 @@ export async function saveCase(fd: FormData) {
         return { id };
       }
 
+      const workflowSteps = Array.isArray(service?.workflowSteps)
+        ? ((service?.workflowSteps as Record<string, unknown>).fa ?? (service?.workflowSteps as Record<string, unknown>).en ?? [])
+        : [];
+      const titles = Array.isArray(workflowSteps) ? workflowSteps.filter((x): x is string => typeof x === "string") : [];
+
       const [row] = await tx
         .insert(cases)
         .values({
@@ -271,10 +276,27 @@ export async function saveCase(fd: FormData) {
           caseNumber: await nextNumber(tx, ctx.org.id, "case"),
           status: "new",
           feeStatus: "unbilled",
+          workflowKey: service?.workflowKey ?? null,
+          currentStepNo: 1,
+          nextAction: titles[0] ?? null,
           createdBy: ctx.user.id,
           isDemo: ctx.org.isDemo,
         })
         .returning();
+
+      if (titles.length > 0) {
+        await tx.insert(caseWorkflowSteps).values(
+          titles.map((title, index) => ({
+            organizationId: ctx.org.id,
+            caseId: row.id,
+            stepNo: index + 1,
+            stepKey: (service?.workflowKey ?? "case") + "_" + (index + 1),
+            title,
+            status: index === 0 ? "active" : "pending",
+            actionRequired: title,
+          })),
+        );
+      }
 
       if (data.notes) {
         await tx.insert(caseNotes).values({
@@ -322,6 +344,122 @@ export async function transitionCase(id: string, action: string) {
       if (!tr.from.includes(row.status)) throw new FinanceError("invalid_transition");
       await tx.update(cases).set({ status: tr.to, closedAt: tr.to === "closed" ? new Date().toISOString().slice(0, 10) : row.closedAt, updatedAt: new Date() }).where(eq(cases.id, id));
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: tr.approve ? "APPROVE" : tr.to === "cancelled" ? "CANCEL" : "UPDATE", entityType: "case", entityId: id, oldData: { status: row.status }, newData: { status: tr.to } });
+    });
+  });
+}
+
+export async function completeCaseWorkflowStepAction(id: string) {
+  return act(async () => {
+    const ctx = await requireContext("cases.write");
+    await db.transaction(async (tx) => {
+      const [step] = await tx.select().from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.id, id), eq(caseWorkflowSteps.organizationId, ctx.org.id)))
+        .for("update");
+      if (!step) throw new FinanceError("not_found");
+      if (step.status !== "active") throw new FinanceError("invalid_transition");
+
+      const [row] = await tx.select().from(cases)
+        .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id)))
+        .for("update");
+      if (!row) throw new FinanceError("not_found");
+
+      const [next] = await tx.select().from(caseWorkflowSteps)
+        .where(and(
+          eq(caseWorkflowSteps.caseId, row.id),
+          eq(caseWorkflowSteps.organizationId, ctx.org.id),
+          eq(caseWorkflowSteps.stepNo, step.stepNo + 1),
+        ));
+
+      await tx.update(caseWorkflowSteps).set({
+        status: "completed",
+        completedAt: new Date(),
+        completedBy: ctx.user.id,
+        updatedAt: new Date(),
+      }).where(eq(caseWorkflowSteps.id, step.id));
+
+      if (next) {
+        await tx.update(caseWorkflowSteps).set({
+          status: "active",
+          updatedAt: new Date(),
+        }).where(eq(caseWorkflowSteps.id, next.id));
+
+        await tx.update(cases).set({
+          status: row.status === "new" ? "in_progress" : row.status,
+          currentStepNo: next.stepNo,
+          nextAction: next.actionRequired ?? next.title,
+          targetDate: next.dueDate,
+          updatedAt: new Date(),
+        }).where(eq(cases.id, row.id));
+      } else {
+        await tx.update(cases).set({
+          status: "ready_for_delivery",
+          currentStepNo: step.stepNo,
+          nextAction: null,
+          targetDate: null,
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(cases.id, row.id));
+      }
+
+      await audit(tx, {
+        orgId: ctx.org.id,
+        userId: ctx.user.id,
+        action: "UPDATE",
+        entityType: "case_workflow_step",
+        entityId: step.id,
+        oldData: { status: step.status, caseId: step.caseId, stepNo: step.stepNo },
+        newData: { status: "completed", nextStepNo: next?.stepNo ?? null },
+      });
+    });
+  });
+}
+
+export async function updateCaseWorkflowStepAction(fd: FormData) {
+  return act(async () => {
+    const ctx = await requireContext("cases.write");
+    const id = str(fd.get("id"));
+    const dueDate = optStr(fd.get("dueDate"));
+    const amountRaw = str(fd.get("amount"));
+    const amount = amountRaw === "" ? null : Number(amountRaw.replace(/,/g, ""));
+    const actionRequired = optStr(fd.get("actionRequired"));
+    const notes = optStr(fd.get("notes"));
+    if (!id || (amount !== null && (!Number.isFinite(amount) || amount < 0))) throw new FinanceError("invalid_input");
+
+    await db.transaction(async (tx) => {
+      const [step] = await tx.select().from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.id, id), eq(caseWorkflowSteps.organizationId, ctx.org.id)))
+        .for("update");
+      if (!step) throw new FinanceError("not_found");
+
+      const [row] = await tx.select({ id: cases.id }).from(cases)
+        .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id)));
+      if (!row) throw new FinanceError("not_found");
+
+      await tx.update(caseWorkflowSteps).set({
+        dueDate,
+        amount,
+        actionRequired,
+        notes,
+        updatedAt: new Date(),
+      }).where(eq(caseWorkflowSteps.id, id));
+
+      if (step.status === "active") {
+        await tx.update(cases).set({
+          targetDate: dueDate,
+          nextAction: actionRequired || step.title,
+          updatedAt: new Date(),
+        }).where(eq(cases.id, row.id));
+      }
+
+      await audit(tx, {
+        orgId: ctx.org.id,
+        userId: ctx.user.id,
+        action: "UPDATE",
+        entityType: "case_workflow_step",
+        entityId: id,
+        oldData: { dueDate: step.dueDate, amount: step.amount, actionRequired: step.actionRequired },
+        newData: { dueDate, amount, actionRequired, notes },
+      });
     });
   });
 }
