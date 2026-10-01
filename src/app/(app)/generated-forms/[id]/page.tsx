@@ -57,6 +57,7 @@ export default async function GeneratedFormPage({ params }: { params: Promise<{ 
         actions={<>
           <Link href="/official-forms" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm print:hidden">← {t("back")}</Link>
           <PrintButton label={t("printForm")} audit={{ entityType: "generated_form", entityId: id }} />
+          <Link href={`/generated-forms/${id}/print`} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 print:hidden">نسخه چاپ مستقل</Link>
         </>}
       />
       <div className="mx-auto max-w-4xl space-y-4">
