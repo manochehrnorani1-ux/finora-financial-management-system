@@ -165,6 +165,7 @@ export const customerEmployees = pgTable("customer_employees", {
   customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(),
   fatherName: text("father_name"),
+  grandfatherName: text("grandfather_name"),
   nationalId: text("national_id"),
   tin: text("tin"),
   phone: text("phone"),
