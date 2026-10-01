@@ -1,7 +1,8 @@
 "use server";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { attachments, cases, customers, generatedForms, officialForms } from "@/db/schema";
+import { attachments, cases, customers, generatedForms, officialForms, customerBankAccounts, customerBranches, customerEmployees, customerGuarantees, customerLicenses, customerShareholders } from "@/db/schema";
+import { mergeZipFields } from "@/lib/zip-form-definitions";
 import { requireContext } from "@/lib/auth";
 import { audit, FinanceError, nextNumber } from "@/lib/finance";
 import { optStr, str } from "@/lib/format";
@@ -21,9 +22,9 @@ function safeJson<T>(value: string, fallback: T): T {
   try { return JSON.parse(value) as T; } catch { return fallback; }
 }
 
-function sourceValue(path: string, c: Record<string, unknown>, kase: Record<string, unknown>) {
+function sourceValue(path: string, c: Record<string, unknown>, kase: Record<string, unknown>, business: Record<string, unknown>) {
   const [root, ...parts] = path.split(".");
-  let value: unknown = root === "customer" ? c : root === "case" ? kase : undefined;
+  let value: unknown = root === "customer" ? c : root === "case" ? kase : root === "business" ? business : undefined;
   for (const part of parts) value = value && typeof value === "object" ? (value as Record<string, unknown>)[part] : undefined;
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return value ?? null;
@@ -110,16 +111,47 @@ export async function createGeneratedFormAction(fd: FormData) {
         caseRow = joined.c as unknown as Record<string, unknown>;
         customerId = joined.c.customerId;
       }
-      const fieldList = form.fields as { key: string; label: string; required?: boolean }[];
-      const mapping = form.fieldMapping as Record<string, string>;
+      const branchId = optStr(fd.get("branchId"));
+      const employeeId = optStr(fd.get("employeeId"));
+      const [licenseRows, shareholderRows, employeeRows, branchRows, bankRows, guaranteeRows] = await Promise.all([
+        tx.select().from(customerLicenses).where(and(eq(customerLicenses.organizationId, ctx.org.id), eq(customerLicenses.customerId, customerId!))).orderBy(desc(customerLicenses.createdAt)),
+        tx.select().from(customerShareholders).where(and(eq(customerShareholders.organizationId, ctx.org.id), eq(customerShareholders.customerId, customerId!))).orderBy(desc(customerShareholders.createdAt)),
+        tx.select().from(customerEmployees).where(and(eq(customerEmployees.organizationId, ctx.org.id), eq(customerEmployees.customerId, customerId!))).orderBy(desc(customerEmployees.createdAt)),
+        tx.select().from(customerBranches).where(and(eq(customerBranches.organizationId, ctx.org.id), eq(customerBranches.customerId, customerId!))).orderBy(desc(customerBranches.createdAt)),
+        tx.select().from(customerBankAccounts).where(and(eq(customerBankAccounts.organizationId, ctx.org.id), eq(customerBankAccounts.customerId, customerId!))).orderBy(desc(customerBankAccounts.createdAt)),
+        tx.select().from(customerGuarantees).where(and(eq(customerGuarantees.organizationId, ctx.org.id), eq(customerGuarantees.customerId, customerId!))).orderBy(desc(customerGuarantees.createdAt)),
+      ]);
+      const selectedBranch = branchRows.find((b) => b.id === branchId) ?? branchRows[0] ?? null;
+      const selectedEmployee = employeeRows.find((e) => e.id === employeeId) ?? employeeRows[0] ?? null;
+      const selectedRep = selectedBranch?.representativeEmployeeId ? employeeRows.find((e) => e.id === selectedBranch.representativeEmployeeId) ?? null : selectedEmployee;
+      const primaryLicense = licenseRows[0] ?? null;
+      const shareholderSummary = shareholderRows.map((s) => [s.fullName, s.fatherName ?? "", s.nationalId ?? "", s.ownershipPercentage == null ? "" : String(s.ownershipPercentage), s.province ?? "", s.district ?? "", s.area ?? ""].join(" | ")).join("\n");
+      const branchSummary = branchRows.map((b) => [b.branchNumber ?? "", b.name ?? "", b.province ?? "", b.district ?? "", b.area ?? "", b.market ?? "", b.shopNumber ?? "", b.phone ?? ""].join(" | ")).join("\n");
+      const bankSummary = bankRows.map((b) => [b.accountName, b.accountNumber, b.bankName, b.currency].join(" | ")).join("\n");
+      const guarantorSummary = guaranteeRows.map((g) => [g.guarantorName, g.guarantorFatherName ?? "", g.guarantorNationalId ?? "", g.guarantorPhone ?? "", g.businessName ?? "", g.businessLicenseNumber ?? ""].join(" | ")).join("\n");
+      const business = {
+        shareholders: shareholderRows, shareholdersCount: shareholderRows.length, shareholdersSummary: shareholderSummary,
+        employees: employeeRows, employeesCount: employeeRows.length,
+        branches: branchRows, branchesCount: branchRows.length, branchesSummary: branchSummary,
+        bankAccounts: bankRows, bankAccountsCount: bankRows.length, bankAccountsSummary: bankSummary,
+        guarantees: guaranteeRows, guarantorsSummary: guarantorSummary,
+        primaryLicense, selectedBranch: selectedBranch ? { ...selectedBranch, representative: selectedRep } : null,
+        selectedEmployee,
+      };
+      const mergedFields = mergeZipFields(form.formKey, form.fields as never);
+      const fieldList = mergedFields as { key: string; label: string; required?: boolean }[];
+      const baseMapping = form.fieldMapping as Record<string, string>;
+      const zipMapping = Object.fromEntries(mergedFields.filter((f) => f.mapping).map((f) => [f.key, f.mapping!]));
+      const mapping = { ...baseMapping, ...zipMapping };
       const values: Record<string, unknown> = {};
       let missing = false;
       for (const f of fieldList) {
         const source = mapping[f.key];
-        const value = source ? sourceValue(source, customerRow, caseRow) : null;
+        const value = source ? sourceValue(source, customerRow, caseRow, business) : null;
         values[f.key] = value;
-        if (f.required && (value === null || value === "")) missing = true;
+        if (f.required && (value === null || value === "" || (typeof value === "number" && value <= 0))) missing = true;
       }
+      values._zipBusiness = business;
       const allMapped = fieldList.length > 0 && fieldList.every((f) => Boolean(mapping[f.key]));
       const internal = !form.isOfficial;
       const matchStatus = !fieldList.length || !allMapped || missing ? "MISSING_FIELD" : internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
@@ -164,8 +196,8 @@ export async function saveGeneratedFormValuesAction(fd: FormData) {
         const fieldKey = key.slice("field_".length);
         values[fieldKey] = str(entry);
       }
-      const fieldList = (row.form?.fields ?? []) as { key: string; label: string; required?: boolean }[];
-      const mapping = (row.form?.fieldMapping ?? {}) as Record<string, string>;
+      const fieldList = mergeZipFields(row.form?.formKey ?? "", (row.form?.fields ?? []) as never) as { key: string; label: string; required?: boolean }[];
+      const mapping = { ...(row.form?.fieldMapping ?? {}) as Record<string, string>, ...Object.fromEntries(fieldList.filter((f: any) => f.mapping).map((f: any) => [f.key, f.mapping])) };
       const missingRequired = fieldList.some((f) => f.required && !String(values[f.key] ?? "").trim());
       const allMapped = fieldList.length > 0 && fieldList.every((f) => Boolean(mapping[f.key]));
       const internal = !row.form?.isOfficial;
