@@ -183,12 +183,8 @@ export async function createGeneratedFormAction(fd: FormData) {
         return { ok: false, error: "form_incomplete", message: missingLabels.join("، ") };
       }
       const allMapped = fieldList.length > 0 && fieldList.every((f) => Boolean(mapping[f.key]));
-      if (!allMapped) {
-        const unmapped = fieldList.filter((f) => !mapping[f.key]).map((f) => f.label);
-        return { ok: false, error: "form_incomplete", message: unmapped.join("، ") };
-      }
       const internal = !form.isOfficial;
-      const matchStatus = internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
+      const matchStatus = !fieldList.length || !allMapped ? "MISSING_FIELD" : internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
       const internalNumber = await nextNumber(tx, ctx.org.id, "generated_form");
       const [row] = await tx.insert(generatedForms).values({
         organizationId: ctx.org.id,
