@@ -141,43 +141,164 @@ export async function saveCase(fd: FormData) {
     const serviceId = optStr(fd.get("serviceId"));
     const responsibleEmployeeId = optStr(fd.get("responsibleEmployeeId"));
     const openedAt = str(fd.get("openedAt")) || new Date().toISOString().slice(0, 10);
-    const priority = ["normal", "high", "urgent"].includes(str(fd.get("priority"))) ? str(fd.get("priority")) : "normal";
+    const priorityValue = str(fd.get("priority"));
+    const priority = ["normal", "high", "urgent"].includes(priorityValue)
+      ? priorityValue
+      : "normal";
+
+    const isValidIsoDate = (value: string) => {
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+      const [year, month, day] = value.split("-").map(Number);
+      const date = new Date(Date.UTC(year, month - 1, day));
+      return (
+        Number.isInteger(year) &&
+        Number.isInteger(month) &&
+        Number.isInteger(day) &&
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
+      );
+    };
+
+    if (!customerId) throw new FinanceError("customer_not_found");
+    if (!isValidIsoDate(openedAt)) throw new FinanceError("invalid_case_date");
+
+    const rawFee = str(fd.get("serviceFee"));
+    const rawDiscount = str(fd.get("discountAmount"));
+    const fee = rawFee === "" ? null : Number(rawFee.replace(/,/g, ""));
+    const discount = rawDiscount === "" ? 0 : Number(rawDiscount.replace(/,/g, ""));
+
+    if (fee !== null && !Number.isFinite(fee)) {
+      throw new FinanceError("invalid_case_fee");
+    }
+    if (!Number.isFinite(discount) || discount < 0) {
+      throw new FinanceError("invalid_case_discount");
+    }
+
     return db.transaction(async (tx) => {
-      const [customer] = await tx.select({ id: customers.id }).from(customers).where(and(eq(customers.id, customerId), eq(customers.organizationId, ctx.org.id)));
+      const [customer] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.id, customerId), eq(customers.organizationId, ctx.org.id)));
+
       if (!customer) throw new FinanceError("customer_not_found");
+
       let service: typeof services.$inferSelect | undefined;
+
       if (serviceId) {
-        const [s] = await tx.select().from(services).where(and(eq(services.id, serviceId), eq(services.organizationId, ctx.org.id)));
+        const [s] = await tx
+          .select()
+          .from(services)
+          .where(and(eq(services.id, serviceId), eq(services.organizationId, ctx.org.id)));
+
         if (!s) throw new FinanceError("invalid_case_service");
         service = s;
       }
+
       if (responsibleEmployeeId) {
-        const [member] = await tx.select({ id: organizationMembers.id }).from(organizationMembers).innerJoin(profiles, eq(organizationMembers.userId, profiles.id)).where(and(eq(organizationMembers.organizationId, ctx.org.id), eq(organizationMembers.userId, responsibleEmployeeId), eq(organizationMembers.status, "active")));
+        const [member] = await tx
+          .select({ id: organizationMembers.id })
+          .from(organizationMembers)
+          .innerJoin(profiles, eq(organizationMembers.userId, profiles.id))
+          .where(
+            and(
+              eq(organizationMembers.organizationId, ctx.org.id),
+              eq(organizationMembers.userId, responsibleEmployeeId),
+              eq(organizationMembers.status, "active"),
+            ),
+          );
+
         if (!member) throw new FinanceError("invalid_case_employee");
       }
-      const rawFee = str(fd.get("serviceFee"));
-      const fee = rawFee ? num(fd.get("serviceFee")) : Number(service?.defaultPrice ?? 0);
-      const discount = num(fd.get("discountAmount"));
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(openedAt)) throw new FinanceError("invalid_case_date");
-      if (!Number.isFinite(fee) || fee < 0) throw new FinanceError("invalid_case_fee");
-      if (!Number.isFinite(discount) || discount < 0 || discount > fee) throw new FinanceError("invalid_case_discount");
-      const data = { customerId, serviceId, responsibleEmployeeId, priority, openedAt, serviceFee: fee, discountAmount: discount, feeCurrency: ctx.org.currency, notes: optStr(fd.get("notes")) };
+
+      const finalFee = fee === null ? Number(service?.defaultPrice ?? 0) : fee;
+
+      if (!Number.isFinite(finalFee) || finalFee < 0) {
+        throw new FinanceError("invalid_case_fee");
+      }
+      if (discount > finalFee) {
+        throw new FinanceError("invalid_case_discount");
+      }
+
+      const data = {
+        customerId,
+        serviceId,
+        responsibleEmployeeId,
+        priority,
+        openedAt,
+        serviceFee: finalFee,
+        discountAmount: discount,
+        feeCurrency: ctx.org.currency,
+        notes: optStr(fd.get("notes")),
+      };
+
       if (id) {
-        const [old] = await tx.select().from(cases).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id))).for("update");
+        const [old] = await tx
+          .select()
+          .from(cases)
+          .where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id)))
+          .for("update");
+
         if (!old) throw new FinanceError("not_found");
-        if (old.feeStatus !== "unbilled" && (fee !== Number(old.serviceFee) || discount !== Number(old.discountAmount))) throw new FinanceError("cannot_edit_final");
+
+        if (
+          old.feeStatus !== "unbilled" &&
+          (finalFee !== Number(old.serviceFee) || discount !== Number(old.discountAmount))
+        ) {
+          throw new FinanceError("cannot_edit_final");
+        }
+
         await tx.update(cases).set({ ...data, updatedAt: new Date() }).where(eq(cases.id, id));
-        await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "UPDATE", entityType: "case", entityId: id, oldData: old, newData: data });
+
+        await audit(tx, {
+          orgId: ctx.org.id,
+          userId: ctx.user.id,
+          action: "UPDATE",
+          entityType: "case",
+          entityId: id,
+          oldData: old,
+          newData: data,
+        });
+
         return { id };
       }
-      const [row] = await tx.insert(cases).values({ ...data, organizationId: ctx.org.id, caseNumber: await nextNumber(tx, ctx.org.id, "case"), status: "new", feeStatus: "unbilled", createdBy: ctx.user.id, isDemo: ctx.org.isDemo }).returning();
-      if (data.notes) await tx.insert(caseNotes).values({ organizationId: ctx.org.id, caseId: row.id, body: data.notes, visibility: "internal", createdBy: ctx.user.id });
-      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "case", entityId: row.id, newData: row });
+
+      const [row] = await tx
+        .insert(cases)
+        .values({
+          ...data,
+          organizationId: ctx.org.id,
+          caseNumber: await nextNumber(tx, ctx.org.id, "case"),
+          status: "new",
+          feeStatus: "unbilled",
+          createdBy: ctx.user.id,
+          isDemo: ctx.org.isDemo,
+        })
+        .returning();
+
+      if (data.notes) {
+        await tx.insert(caseNotes).values({
+          organizationId: ctx.org.id,
+          caseId: row.id,
+          body: data.notes,
+          visibility: "internal",
+          createdBy: ctx.user.id,
+        });
+      }
+
+      await audit(tx, {
+        orgId: ctx.org.id,
+        userId: ctx.user.id,
+        action: "CREATE",
+        entityType: "case",
+        entityId: row.id,
+        newData: row,
+      });
+
       return { id: row.id };
     });
   });
 }
-
 const CASE_TRANSITIONS: Record<string, { from: string[]; to: string; approve?: boolean }> = {
   review: { from: ["new"], to: "reviewing" },
   missing: { from: ["reviewing", "in_progress", "awaiting_review"], to: "missing_documents" },
