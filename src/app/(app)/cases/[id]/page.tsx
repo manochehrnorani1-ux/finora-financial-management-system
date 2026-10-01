@@ -9,6 +9,9 @@ import { receiveCaseFee } from "@/actions/finance";
 import { ActionButton, FormDialog, PrintButton, type Field } from "@/components/forms";
 import { Badge, Card, KV, Money, PageHeader, Stat, Table } from "@/components/ui";
 import { formatDate, formatDateTime } from "@/lib/jalali";
+import { getCaseSnapshot } from "@/lib/case-workflows";
+import { isWorkflowKey } from "@/lib/case-workflow-definitions";
+import { CaseWorkflowPanel } from "@/components/CaseWorkflowPanel";
 
 const STATUS_KEY: Record<string, string> = { new: "newCase", reviewing: "reviewing", missing_documents: "missingDocuments", in_progress: "inProgress", awaiting_review: "awaitingReview", awaiting_approval: "awaitingApproval", ready_for_delivery: "readyForDelivery", delivered: "delivered", closed: "closed", cancelled: "cancelled" };
 
@@ -19,7 +22,16 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     .from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).leftJoin(services, eq(cases.serviceId, services.id)).leftJoin(profiles, eq(cases.responsibleEmployeeId, profiles.id)).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id)));
   if (!record) notFound();
   const c = record.c;
-  const [customerList, serviceList, members, notes, docs, fees, files, settlements, forms, incomeRows, cash, bank] = await Promise.all([
+  const state = await getCaseSnapshot(db, ctx.org.id, id);
+  const canAdvance = !isWorkflowKey(c.serviceKey) || (
+    state.missingDocs === 0 && state.totalDebt === 0 && state.pendingLegalReview === 0 && !state.incompleteLinkedSettlement &&
+    state.feeRemaining === 0 && state.milestones.every((m) => m.step.status === "approved") &&
+    (c.serviceKey !== "corrective-plan" || state.milestones.length > 0) &&
+    !state.linkedCases.some((v) => v.serviceKey === "corrective-plan" && !["closed", "cancelled"].includes(v.status)) &&
+    state.tasks.every((v) => v.status === "completed") && c.outcomeStatus === "approved" && !!c.outcomeReference &&
+    !(c.serviceKey === "fx-renewal" && state.license?.status === "suspended")
+  );
+  const [customerList, serviceList, members, notes, docs, fees, files, forms, incomeRows, cash, bank] = await Promise.all([
     db.select({ id: customers.id, name: customers.name, code: customers.customerCode }).from(customers).where(eq(customers.organizationId, ctx.org.id)).orderBy(customers.name),
     db.select({ id: services.id, name: services.name }).from(services).where(eq(services.organizationId, ctx.org.id)),
     db.select({ id: profiles.id, name: profiles.fullName }).from(organizationMembers).innerJoin(profiles, eq(organizationMembers.userId, profiles.id)).where(and(eq(organizationMembers.organizationId, ctx.org.id), eq(organizationMembers.status, "active"))),
@@ -27,7 +39,6 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     db.select().from(documents).where(and(eq(documents.caseId, id), eq(documents.organizationId, ctx.org.id))).orderBy(desc(documents.createdAt)),
     db.select({ r: serviceFeeReceipts, user: profiles.fullName }).from(serviceFeeReceipts).leftJoin(profiles, eq(serviceFeeReceipts.issuedBy, profiles.id)).where(and(eq(serviceFeeReceipts.caseId, id), eq(serviceFeeReceipts.organizationId, ctx.org.id))).orderBy(desc(serviceFeeReceipts.createdAt)),
     db.select({ f: caseFiles, a: attachments, user: profiles.fullName }).from(caseFiles).innerJoin(attachments, eq(caseFiles.attachmentId, attachments.id)).leftJoin(profiles, eq(caseFiles.uploadedBy, profiles.id)).where(and(eq(caseFiles.caseId, id), eq(caseFiles.organizationId, ctx.org.id))).orderBy(desc(caseFiles.createdAt)),
-    db.select().from(taxSettlements).where(and(eq(taxSettlements.caseId, id), eq(taxSettlements.organizationId, ctx.org.id))).orderBy(desc(taxSettlements.createdAt)),
     db.select().from(generatedForms).where(and(eq(generatedForms.caseId, id), eq(generatedForms.organizationId, ctx.org.id))).orderBy(desc(generatedForms.createdAt)),
     db.select().from(incomes).where(and(eq(incomes.caseId, id), eq(incomes.organizationId, ctx.org.id))).orderBy(desc(incomes.createdAt)),
     db.select({ id: cashAccounts.id, name: cashAccounts.name }).from(cashAccounts).where(and(eq(cashAccounts.organizationId, ctx.org.id), eq(cashAccounts.isActive, true))),
@@ -41,6 +52,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     { name: "customerId", label: t("customer"), type: "select", required: true, defaultValue: c.customerId, options: customerList.map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` })) },
     { name: "serviceId", label: t("service"), type: "select", defaultValue: c.serviceId, options: serviceList.map((x) => ({ value: x.id, label: x.name })) },
     { name: "openedAt", label: t("openingDate"), type: "date", required: true, defaultValue: c.openedAt },
+    { name: "dueDate", label: t("milestoneDue"), type: "date", defaultValue: c.dueDate },
     { name: "responsibleEmployeeId", label: t("responsibleEmployee"), type: "select", defaultValue: c.responsibleEmployeeId, options: members.map((x) => ({ value: x.id, label: x.name })) },
     { name: "priority", label: t("priority"), type: "select", required: true, defaultValue: c.priority, options: ["normal", "high", "urgent"].map((x) => ({ value: x, label: t(x) })) },
     { name: "serviceFee", label: `${t("caseFee")} (${ctx.org.currency})`, type: "number", required: true, defaultValue: c.serviceFee },
@@ -65,10 +77,11 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           <Link href="/cases" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">← {t("back")}</Link>
           <PrintButton label={t("print")} audit={{ entityType: "case", entityId: id }} />
           {ctx.can("cases.write") && !["closed", "cancelled"].includes(c.status) && <FormDialog title={t("edit")} triggerLabel={t("edit")} triggerVariant="secondary" action={saveCase} fields={caseFields} hidden={{ id: c.id }} wide />}
-          {statusActions.filter((x) => !x.needsApproval || ctx.can("cases.approve")).filter((x) => x.needsApproval || ctx.can("cases.write")).map((x) => <ActionButton key={x.action} action={transitionCase} args={[c.id, x.action]} label={t(x.label)} variant={x.variant} confirm={x.action === "cancel" ? t("confirm") + "?" : undefined} />)}
-          {ctx.can("cases.write") && !["closed", "cancelled"].includes(c.status) && <ActionButton action={transitionCase} args={[c.id, "cancel"]} label={t("cancel")} variant="danger" confirm={t("confirm") + "?"} />}
+          {statusActions.filter((x) => x.action !== "cancel" && (!x.needsApproval || ctx.can("cases.approve")) && (x.needsApproval || ctx.can("cases.write")) && (!["awaiting_review", "request_approval", "ready", "deliver", "close"].includes(x.action) || canAdvance || (!isWorkflowKey(c.serviceKey) && x.action === "awaiting_review"))).map((x) => <ActionButton key={x.action} action={transitionCase} args={[c.id, x.action]} label={t(x.label)} variant={x.variant} />)}
+          {ctx.can("cases.approve") && !["closed", "cancelled", "delivered"].includes(c.status) && <ActionButton action={transitionCase} args={[c.id, "cancel"]} label={t("cancel")} variant="danger" confirm={t("confirm") + "?"} />}
           {ctx.can("cases.delete") && ["new", "cancelled"].includes(c.status) && <ActionButton action={deleteUnlinkedCaseAction} args={[c.id]} label={t("delete")} variant="danger" confirm={t("confirmDelete")} />}
         </>} />
+      <CaseWorkflowPanel state={state} perms={[...ctx.perms]} currency={ctx.org.currency} fmt={fmt} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <Stat label={t("feeTotal")} value={<Money value={feeTotal} currency={c.feeCurrency} />} tone="blue" />
         <Stat label={t("paidAmount")} value={<Money value={paid} currency={c.feeCurrency} />} tone="green" />
@@ -80,7 +93,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           <KV items={[[t("caseNumber"), c.caseNumber], [t("customer"), <Link key="c" href={`/customer-accounts/${c.customerId}`} className="text-emerald-700">{record.customer.name}</Link>], [t("service"), record.service?.name ?? "-"], [t("openingDate"), formatDate(c.openedAt, fmt)], [t("responsibleEmployee"), record.employee ?? "-"], [t("priority"), t(c.priority)], [t("caseFee"), <Money key="f" value={c.serviceFee} currency={c.feeCurrency} />], [t("discount"), <Money key="d" value={c.discountAmount} currency={c.feeCurrency} />], [t("feeStatus"), t(c.feeStatus)], [t("createdBy"), c.createdBy === ctx.user.id ? ctx.user.fullName : ""]]} />
           {c.notes && <p className="mt-3 text-sm text-slate-600 whitespace-pre-wrap">{c.notes}</p>}
         </Card>
-        <Card title={t("caseFee")} className="lg:col-span-2" actions={ctx.can("cases.write") && remaining > 0 && <FormDialog title={t("issueReceipt")} triggerLabel={`+ ${t("issueReceipt")}`} action={receiveCaseFee} hidden={{ caseId: c.id }} fields={[
+        <Card title={t("caseFee")} className="lg:col-span-2" actions={ctx.can("income.write") && ctx.can("customer_accounts.write") && remaining > 0 && <FormDialog title={t("issueReceipt")} triggerLabel={`+ ${t("issueReceipt")}`} action={receiveCaseFee} hidden={{ caseId: c.id }} fields={[
           { name: "amount", label: `${t("amount")} (${c.feeCurrency})`, type: "number", required: true, defaultValue: remaining },
           { name: "account", label: t("paymentMethod"), type: "select", required: true, defaultValue: paymentTargets[0]?.value, options: paymentTargets },
           { name: "date", label: t("date"), type: "date", required: true },
@@ -108,9 +121,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         <Card title={t("caseTimeline")} className="lg:col-span-2" actions={ctx.can("cases.write") && <FormDialog title={t("addNote")} triggerLabel={`+ ${t("addNote")}`} action={addCaseNoteForm} hidden={{ caseId: c.id }} fields={[{ name: "body", label: t("internalNote"), type: "textarea", required: true, full: true }]} />}>
           <ul className="divide-y divide-slate-100">{notes.length === 0 && <li className="py-4 text-center text-sm text-slate-400">{t("noData")}</li>}{notes.map(({ n, user }) => <li key={n.id} className="py-3"><div className="flex justify-between gap-2 text-xs text-slate-400"><span>{user ?? "-"} · {t("internalNote")}</span><span>{formatDateTime(n.createdAt, fmt)}</span></div><p className="mt-1 text-sm whitespace-pre-wrap">{n.body}</p></li>)}</ul>
         </Card>
-        <Card title={t("taxSettlement")} className="lg:col-span-1" actions={<Link href={`/tax-settlements?caseId=${c.id}`} className="text-xs text-emerald-700">{t("details")} →</Link>}>
-          <ul className="divide-y divide-slate-100 text-sm">{settlements.length === 0 && <li className="py-4 text-center text-slate-400">{t("noData")}</li>}{settlements.map((s) => <li key={s.id} className="py-2"><Link href={`/tax-settlements/${s.id}`} className="font-mono text-xs text-emerald-700">{s.settlementNumber}</Link><div className="mt-1 flex justify-between"><span>{t(s.status === "REQUIRES_LEGAL_REVIEW" ? "requiresLegalReview" : s.status)}</span><Money value={s.taxAmount} currency={ctx.org.currency} /></div></li>)}</ul>
-        </Card>
+
         <Card title={t("officialForms")} className="lg:col-span-1">
           <ul className="divide-y divide-slate-100 text-sm">{forms.length === 0 && <li className="py-4 text-center text-slate-400">{t("noData")}</li>}{forms.map((f) => <li key={f.id} className="py-2"><Link href={`/generated-forms/${f.id}`} className="text-emerald-700">{f.formNameSnapshot}</Link><div className="text-xs text-slate-500">{t("formVersion")} {f.versionSnapshot} · {t(f.matchStatus === "LEGAL_REVIEW_REQUIRED" ? "legalReviewRequired" : f.matchStatus)}</div></li>)}</ul>
         </Card>

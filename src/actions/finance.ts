@@ -323,8 +323,8 @@ export async function receivePaymentAction(fd: FormData) {
 
 export async function receiveCaseFee(fd: FormData) {
   return act(async () => {
-    const ctx = await requireContext("cases.write");
-    if (!ctx.can("customer_accounts.write")) throw new FinanceError("forbidden");
+    const ctx = await requireContext("income.write");
+    if (!ctx.can("customer_accounts.write") || !ctx.can("cases.read")) throw new FinanceError("forbidden");
     const caseId = str(fd.get("caseId"));
     const amount = round2(num(fd.get("amount")));
     const [method, accountId] = str(fd.get("account")).split(":");

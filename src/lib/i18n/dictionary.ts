@@ -1,5 +1,6 @@
 import { EXTENDED } from "./extended";
 import { EXTENDED_MORE } from "./extended-more";
+import { WORKFLOW_TRANSLATIONS } from "./workflow";
 
 export type Lang = "fa" | "ps" | "en";
 export const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
@@ -328,7 +329,7 @@ export type TKey = keyof typeof D;
 const IDX: Record<Lang, 0 | 1 | 2> = { fa: 0, ps: 1, en: 2 };
 
 export function translate(lang: Lang, key: string): string {
-  const row = (D as Record<string, readonly [string, string, string]>)[key] ?? EXTENDED[key] ?? EXTENDED_MORE[key];
+  const row = (D as Record<string, readonly [string, string, string]>)[key] ?? EXTENDED[key] ?? EXTENDED_MORE[key] ?? WORKFLOW_TRANSLATIONS[key];
   if (!row) return key;
   return row[IDX[lang]];
 }
@@ -338,5 +339,6 @@ export function getDictionary(lang: Lang): Record<string, string> {
   for (const k of Object.keys(D)) out[k] = translate(lang, k);
   for (const k of Object.keys(EXTENDED)) out[k] = translate(lang, k);
   for (const k of Object.keys(EXTENDED_MORE)) out[k] = translate(lang, k);
+  for (const k of Object.keys(WORKFLOW_TRANSLATIONS)) out[k] = translate(lang, k);
   return out;
 }

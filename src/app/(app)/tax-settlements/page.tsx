@@ -69,7 +69,7 @@ export default async function TaxSettlementsPage({ searchParams }: { searchParam
   ];
 
   const settlementFields: Field[] = [
-    { name: "customerId", label: t("customer"), type: "select", required: true, options: customersList.map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` })) },
+    { name: "customerId", label: t("customer"), type: "select", required: true, defaultValue: caseList.find((v) => v.id === caseId)?.customerId, options: customersList.map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` })) },
     { name: "caseId", label: t("case"), type: "select", defaultValue: caseId, options: caseList.map((x) => ({ value: x.id, label: x.caseNumber })) },
     { name: "taxTypeId", label: t("taxType"), type: "select", options: types.map((x) => ({ value: x.id, label: `${x.name} (${x.code})` })) },
     {

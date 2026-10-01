@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { LANGS } from "@/lib/i18n/dictionary";
 import { logoutAction, setLanguageAction, switchOrganizationAction } from "@/actions/auth";
 import type { NavCounts } from "@/lib/nav-counts";
+import { WORKFLOW_KEYS, WORKFLOW_SERVICES } from "@/lib/case-workflow-definitions";
 import { Toaster } from "./forms";
 
 interface PrimaryMenuItem {
@@ -26,7 +27,7 @@ export const PRIMARY_MENU: PrimaryMenuItem[] = [
   { key: "dashboard", href: "/dashboard", icon: "▦", perms: ["dashboard.read"] },
   { key: "cases", href: "/cases", icon: "📁", perms: ["cases.read"], badge: "cases" },
   { key: "customers", href: "/customers", icon: "👥", perms: ["customers.read"] },
-  { key: "services", href: "/panel/services", icon: "🗂", perms: ["services.read"] },
+  { key: "services", href: "/panel/services", icon: "🗂", perms: ["services.read"], routes: ["/services-workflow"] },
   {
     key: "documentsCenter",
     href: "/documents-center",
@@ -84,6 +85,7 @@ export function Shell({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const [servicesExpanded, setServicesExpanded] = useState(pathname.startsWith("/services-workflow"));
   const [, start] = useTransition();
   const allowed = useMemo(() => new Set(perms), [perms]);
   const searching = query.trim().length > 0;
@@ -103,22 +105,27 @@ export function Shell({
         {visibleItems.map((item) => {
           const active = isActive(item);
           const badge = badgeValue(item.badge);
+          const isService = item.key === "services" && allowed.has("cases.read");
           return (
-            <Link
-              key={item.key}
-              href={item.href}
-              onClick={onNavigate}
-              title={collapsed ? t(item.key) : undefined}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${active ? "border-e-4 border-emerald-400 bg-emerald-600/20 font-semibold text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
-            >
-              <span className="w-5 shrink-0 text-center text-base">{item.icon}</span>
-              {!collapsed && (
-                <>
-                  <span className="flex-1 truncate">{t(item.key)}</span>
-                  {badge > 0 && <span className="min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white">{badge}</span>}
-                </>
+            <div key={item.key}>
+              <div className="flex items-center gap-1">
+                <Link
+                  href={item.href}
+                  onClick={() => { if (isService) setServicesExpanded(true); onNavigate(); }}
+                  title={collapsed ? t(item.key) : undefined}
+                  className={`group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${active ? "border-e-4 border-emerald-400 bg-emerald-600/20 font-semibold text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
+                >
+                  <span className="w-5 shrink-0 text-center text-base">{item.icon}</span>
+                  {!collapsed && <><span className="flex-1 truncate">{t(item.key)}</span>{badge > 0 && <span className="min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white">{badge}</span>}</>}
+                </Link>
+                {isService && !collapsed && <button type="button" onClick={() => setServicesExpanded((v) => !v)} aria-label={t("servicesWorkflow")} aria-expanded={servicesExpanded || pathname.startsWith("/services-workflow")} className="rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/10 hover:text-white">{servicesExpanded || pathname.startsWith("/services-workflow") ? "▾" : "▸"}</button>}
+              </div>
+              {isService && !collapsed && (servicesExpanded || pathname.startsWith("/services-workflow")) && (
+                <div className="my-1 ms-5 space-y-0.5 border-s border-white/10 ps-2">
+                  {WORKFLOW_KEYS.map((key) => <Link key={key} href={`/services-workflow/${key}`} onClick={onNavigate} className={`block rounded-md px-2 py-1.5 text-xs transition ${pathname === `/services-workflow/${key}` ? "bg-emerald-700/40 font-semibold text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}>{WORKFLOW_SERVICES[key].label[lang]}</Link>)}
+                </div>
               )}
-            </Link>
+            </div>
           );
         })}
       </div>

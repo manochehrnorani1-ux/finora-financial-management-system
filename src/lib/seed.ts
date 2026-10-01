@@ -26,6 +26,7 @@ import { finalizeExpense, finalizeIncome, openingBalanceEntry, receiveCustomerPa
 import { round2 } from "./format";
 import { todayIso } from "./jalali";
 import { ensurePublicWebsite } from "./website-seed";
+import { ensureWorkflowServices } from "./workflow-seed";
 import { ensureMofTaxCatalog } from "./tax-engine";
 
 /** Sync system roles + permission matrix into the database (idempotent). */
@@ -67,6 +68,8 @@ export async function createOrganization(tx: Tx, p: { name: string; ownerId: str
   await ensureMofTaxCatalog(tx, org.id, p.ownerId);
   await setSetting(tx, org.id, "approval", DEFAULT_APPROVAL);
   await setSetting(tx, org.id, "numbering", DEFAULT_NUMBERING);
+  if (!p.isDemo) await ensurePublicWebsite(tx, org.id, p.ownerId);
+  await ensureWorkflowServices(tx, org.id, p.isDemo ?? false);
   await audit(tx, { orgId: org.id, userId: p.ownerId, action: "CREATE", entityType: "organization", entityId: org.id, newData: { name: p.name, isDemo: p.isDemo ?? false } });
   return org;
 }
@@ -253,6 +256,7 @@ export async function ensureBootstrap() {
       for (const o of allOrgs) {
         await ensureMofTaxCatalog(tx, o.id, any.id);
         if (!o.isDemo) await ensurePublicWebsite(tx, o.id, any.id);
+        await ensureWorkflowServices(tx, o.id, o.isDemo);
       }
     });
     return;

@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { pageContext, sp1, type SP } from "@/lib/page";
 import { saveService, deleteService } from "@/actions/master";
 import { OPERATIONAL_SERVICES, groupLabel, serviceDesc, serviceDocs, serviceLabel, serviceShort, serviceSteps, type OperationalService } from "@/lib/operational-services";
+import { WORKFLOW_KEYS, WORKFLOW_SERVICES, isWorkflowKey } from "@/lib/case-workflow-definitions";
 import { ensurePublicWebsite } from "@/lib/website-seed";
 import { Badge, Card, Money, PageHeader, Stat } from "@/components/ui";
 import { ActionButton, FormDialog, type Field } from "@/components/forms";
@@ -28,11 +29,10 @@ export default async function ServiceManagementPage({ searchParams }: { searchPa
     db.select({ s: services, tax: taxTypes.name }).from(services).leftJoin(taxTypes, eq(services.taxTypeId, taxTypes.id)).where(eq(services.organizationId, ctx.org.id)).orderBy(services.publicOrder, desc(services.createdAt)),
     db.select().from(taxTypes).where(eq(taxTypes.organizationId, ctx.org.id)),
     db.select({ id: officialForms.id, formKey: officialForms.formKey, formName: officialForms.formName, agency: officialForms.agency }).from(officialForms).where(eq(officialForms.organizationId, ctx.org.id)).orderBy(officialForms.agency, officialForms.formKey),
-    db.select({ id: cases.id, caseNumber: cases.caseNumber, serviceId: cases.serviceId }).from(cases).where(eq(cases.organizationId, ctx.org.id)).orderBy(desc(cases.createdAt)).limit(500),
+    db.select({ id: cases.id, caseNumber: cases.caseNumber, serviceId: cases.serviceId, status: cases.status }).from(cases).where(eq(cases.organizationId, ctx.org.id)).orderBy(desc(cases.createdAt)).limit(500),
   ]);
 
   const formByKey = new Map(formRows.map((f) => [f.formKey, f]));
-  const svcById = new Map(rows.map((r) => [r.s.id, r.s]));
   const casesForService = (serviceId: string) => caseRows.filter((c) => c.serviceId === serviceId);
 
   const fields = (s?: ServiceRow): Field[] => {
@@ -71,8 +71,6 @@ export default async function ServiceManagementPage({ searchParams }: { searchPa
   };
 
   const canWrite = ctx.can("services.write");
-  const groups: ("licensing" | "tax")[] = groupFilter === "licensing" || groupFilter === "tax" ? [groupFilter] : ["licensing", "tax"];
-
   const renderServiceCard = (def: OperationalService) => {
     const row = rows.find((r) => r.s.name === def.fa);
     const s = row?.s;
@@ -158,7 +156,7 @@ export default async function ServiceManagementPage({ searchParams }: { searchPa
     <>
       <PageHeader
         title={t("services")}
-        subtitle={`${OPERATIONAL_SERVICES.length} ${t("service")} · ${rows.length} ${t("records")} · ${caseRows.length} ${t("cases")}`}
+        subtitle={`${WORKFLOW_KEYS.length} ${t("servicesWorkflow")} · ${caseRows.length} ${t("cases")}`}
         actions={<>
           <form method="get" className="flex gap-2">
             <select name="group" defaultValue={groupFilter} className="input !w-auto">
@@ -173,25 +171,33 @@ export default async function ServiceManagementPage({ searchParams }: { searchPa
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label={groupLabel("licensing", lang)} value={OPERATIONAL_SERVICES.filter((s) => s.group === "licensing").length} tone="blue" />
-        <Stat label={groupLabel("tax", lang)} value={OPERATIONAL_SERVICES.filter((s) => s.group === "tax").length} tone="amber" />
-        <Stat label={t("officialForms")} value={formRows.length} />
+        <Stat label={t("servicesWorkflow")} value={WORKFLOW_KEYS.length} tone="blue" />
         <Stat label={t("cases")} value={caseRows.length} tone="green" />
+        <Stat label={t("officialForms")} value={formRows.length} />
+        <Stat label={t("pendingWork")} value={caseRows.filter((k) => !["closed", "cancelled"].includes(k.status)).length} tone="amber" />
       </div>
 
-      {groups.map((g) => (
-        <section key={g} className="mb-8">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{groupLabel(g, lang)}</h2>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-              {OPERATIONAL_SERVICES.filter((s) => s.group === g).length} {t("service")}
-            </span>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {OPERATIONAL_SERVICES.filter((s) => s.group === g).map(renderServiceCard)}
-          </div>
-        </section>
-      ))}
+      <section className="mb-8">
+        <h2 className="mb-3 text-xl font-bold text-slate-900">{t("servicesWorkflow")}</h2>
+        <p className="mb-4 text-sm text-slate-500">{t("workflowProcess")} — {t("nextAction")}</p>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {WORKFLOW_KEYS.filter((key) => groupFilter === "" || (groupFilter === "tax" ? key === "tax-settlement" : key !== "tax-settlement")).map((key, index) => {
+            const def = WORKFLOW_SERVICES[key];
+            const svc = rows.find((r) => r.s.serviceKey === key)?.s;
+            const activeCases = caseRows.filter((k) => k.serviceId === svc?.id).length;
+            return <Link key={key} href={`/services-workflow/${key}`} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-400 hover:shadow-md">
+              <div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 font-mono text-sm font-bold text-emerald-800">{String(index + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1"><h3 className="font-bold text-slate-900">{def.label[lang]}</h3><p className="mt-1 text-xs leading-6 text-slate-500">{def.summary[lang]}</p></div></div>
+              <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs"><span className="text-slate-500">{activeCases} {t("cases")} · {def.stages.length} {t("workflowProcess")}</span><span className="font-semibold text-emerald-700">{t("openModule")} →</span></div>
+            </Link>;
+          })}
+        </div>
+      </section>
+      <section className="mb-8">
+        <h2 className="mb-4 text-lg font-bold text-slate-900">{t("publicServices")}</h2>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {OPERATIONAL_SERVICES.filter((s) => !isWorkflowKey(s.key) && (!groupFilter || s.group === groupFilter)).map(renderServiceCard)}
+        </div>
+      </section>
     </>
   );
 }
