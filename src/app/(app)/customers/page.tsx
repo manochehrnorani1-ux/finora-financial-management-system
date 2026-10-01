@@ -22,6 +22,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: SP
   const rows = await db.select().from(customers).where(where).orderBy(desc(customers.createdAt)).limit(300);
   const fields = (c?: typeof customers.$inferSelect): Field[] => [
     { name: "name", label: t("name"), required: true, defaultValue: c?.name },
+    { name: "englishName", label: "نام شرکت به انگلیسی", defaultValue: c?.englishName },
+    { name: "tradeName", label: "نام تجارتی", defaultValue: c?.tradeName },
+    { name: "tradeNameEn", label: "نام تجارتی به انگلیسی", defaultValue: c?.tradeNameEn },
     { name: "fatherName", label: t("fatherName"), defaultValue: c?.fatherName },
     { name: "customerCode", label: t("customerCode"), defaultValue: c?.customerCode, placeholder: "AUTO" },
     { name: "nationalId", label: t("nationalId"), defaultValue: c?.nationalId },
@@ -60,6 +63,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: SP
             formatDate(c.createdAt, fmt),
             <div key="a" className="flex gap-1">
               <Link href={`/customer-accounts/${c.id}`} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs hover:bg-slate-50">{t("ledger")}</Link>
+              <Link href={`/customers/${c.id}/business-profile`} className="rounded-lg border border-emerald-300 px-2.5 py-1 text-xs text-emerald-700 hover:bg-emerald-50">معلومات تجارتی</Link>
               {canWrite && <FormDialog title={t("edit")} triggerLabel={t("edit")} triggerVariant="secondary" triggerSize="sm" action={saveCustomer} fields={fields(c)} hidden={{ id: c.id }} />}
               {ctx.can("customers.delete") && <ActionButton action={deleteCustomer} args={[c.id]} label={t("archive")} variant="warning" confirm={t("confirmDelete")} />}
             </div>,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { cases, customers, officialForms } from "@/db/schema";
+import { cases, customers, officialForms, customerBranches, customerEmployees } from "@/db/schema";
 import { pageContext, sp1, type SP } from "@/lib/page";
 import { saveOfficialForm, verifyOfficialFormAction, createGeneratedFormAction } from "@/actions/official-forms";
 import { ensurePublicWebsite } from "@/lib/website-seed";
@@ -19,9 +19,11 @@ export default async function OfficialFormsPage({ searchParams }: { searchParams
   const q = await searchParams;
   const caseId = sp1(q.caseId);
   await db.transaction((tx) => ensurePublicWebsite(tx, ctx.org.id, ctx.user.id));
-  const [forms, caseOptions] = await Promise.all([
+  const [forms, caseOptions, branchOptions, employeeOptions] = await Promise.all([
     db.select().from(officialForms).where(eq(officialForms.organizationId, ctx.org.id)).orderBy(officialForms.agency, officialForms.formKey, desc(officialForms.version)),
     db.select({ c: cases, customer: customers.name }).from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).where(eq(cases.organizationId, ctx.org.id)).orderBy(desc(cases.createdAt)).limit(300),
+    db.select({ id: customerBranches.id, customerId: customerBranches.customerId, label: customerBranches.name, number: customerBranches.branchNumber }).from(customerBranches).where(eq(customerBranches.organizationId, ctx.org.id)).orderBy(customerBranches.branchNumber),
+    db.select({ id: customerEmployees.id, customerId: customerEmployees.customerId, label: customerEmployees.fullName, position: customerEmployees.position }).from(customerEmployees).where(eq(customerEmployees.organizationId, ctx.org.id)).orderBy(customerEmployees.fullName),
   ]);
   const fields: Field[] = [
     { name: "formKey", label: "Form key", required: true, placeholder: "dab-msp-renewal" },
@@ -65,6 +67,8 @@ export default async function OfficialFormsPage({ searchParams }: { searchParams
               {ctx.can("official_forms.write") && (
                 <FormDialog title={t("generateForm")} triggerLabel={t("generateForm")} triggerVariant="secondary" triggerSize="sm" action={createGeneratedFormAction} hidden={{ formId: f.id }} successPath="/generated-forms/{id}" fields={[
                   { name: "caseId", label: t("case"), type: "select", defaultValue: caseId, options: caseOptions.map((c) => ({ value: c.c.id, label: `${c.c.caseNumber} — ${c.customer}` })) },
+                  { name: "branchId", label: "نمایندگی مورد نظر", type: "select", options: branchOptions.map((b) => ({ value: b.id, label: `${b.number ?? "—"} — ${b.label ?? "نمایندگی"}` })) },
+                  { name: "employeeId", label: "کارمند/نماینده مورد نظر", type: "select", options: employeeOptions.map((e) => ({ value: e.id, label: `${e.label} — ${e.position ?? ""}` })) },
                 ]} />
               )}
             </div>,
