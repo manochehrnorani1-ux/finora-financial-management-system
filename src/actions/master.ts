@@ -1,13 +1,7 @@
 "use server";
 import { and, eq, sum } from "drizzle-orm";
 import { db } from "@/db";
-<<<<<<< HEAD
-import { attachments, caseFiles, caseNotes, caseRequirements, caseTasks, casePlanSteps, cases, complianceEvents, contracts, customerLicenses, customerObligations, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, letters } from "@/db/schema";
-import { getCaseSnapshot, assertCaseReady, initializeCaseWorkflow } from "@/lib/case-workflows";
-import { isWorkflowKey } from "@/lib/case-workflow-definitions";
-=======
 import { attachments, caseFiles, caseNotes, caseWorkflowPayments, caseWorkflowSteps, cases, complianceEvents, contracts, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlementPayments, taxSettlements, letters } from "@/db/schema";
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
 import { requireContext } from "@/lib/auth";
 import { audit, FinanceError, nextNumber } from "@/lib/finance";
 import { num, optStr, str } from "@/lib/format";
@@ -145,15 +139,8 @@ export async function saveCase(fd: FormData) {
     const id = optStr(fd.get("id"));
     const customerId = str(fd.get("customerId"));
     const serviceId = optStr(fd.get("serviceId"));
-    const parentCaseId = optStr(fd.get("parentCaseId"));
-    const licenseId = optStr(fd.get("licenseId"));
     const responsibleEmployeeId = optStr(fd.get("responsibleEmployeeId"));
     const openedAt = str(fd.get("openedAt")) || new Date().toISOString().slice(0, 10);
-<<<<<<< HEAD
-    const dueDate = optStr(fd.get("dueDate"));
-    const priority = ["normal", "high", "urgent"].includes(str(fd.get("priority"))) ? str(fd.get("priority")) : "normal";
-    if (!serviceId || !/^\d{4}-\d{2}-\d{2}$/.test(openedAt) || (dueDate && (dueDate < openedAt || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)))) throw new FinanceError("invalid_input");
-=======
     const priorityValue = str(fd.get("priority"));
     const priority = ["normal", "high", "urgent"].includes(priorityValue)
       ? priorityValue
@@ -188,7 +175,6 @@ export async function saveCase(fd: FormData) {
       throw new FinanceError("invalid_case_discount");
     }
 
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
     return db.transaction(async (tx) => {
       const [customer] = await tx
         .select({ id: customers.id })
@@ -196,17 +182,6 @@ export async function saveCase(fd: FormData) {
         .where(and(eq(customers.id, customerId), eq(customers.organizationId, ctx.org.id)));
 
       if (!customer) throw new FinanceError("customer_not_found");
-<<<<<<< HEAD
-      const [service] = await tx.select().from(services).where(and(eq(services.id, serviceId), eq(services.organizationId, ctx.org.id), eq(services.status, "active")));
-      if (!service) throw new FinanceError("invalid_input");
-      if (parentCaseId) {
-        const [parent] = await tx.select({ id: cases.id }).from(cases).where(and(eq(cases.id, parentCaseId), eq(cases.organizationId, ctx.org.id), eq(cases.customerId, customerId)));
-        if (!parent || parentCaseId === id) throw new FinanceError("invalid_input");
-      }
-      if (licenseId) {
-        const [lic] = await tx.select({ id: customerLicenses.id }).from(customerLicenses).where(and(eq(customerLicenses.id, licenseId), eq(customerLicenses.organizationId, ctx.org.id), eq(customerLicenses.customerId, customerId)));
-        if (!lic) throw new FinanceError("invalid_input");
-=======
 
       let service: typeof services.$inferSelect | undefined;
 
@@ -218,20 +193,9 @@ export async function saveCase(fd: FormData) {
 
         if (!s) throw new FinanceError("invalid_case_service");
         service = s;
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
       }
 
       if (responsibleEmployeeId) {
-<<<<<<< HEAD
-        const [member] = await tx.select({ id: organizationMembers.id }).from(organizationMembers).where(and(eq(organizationMembers.organizationId, ctx.org.id), eq(organizationMembers.userId, responsibleEmployeeId), eq(organizationMembers.status, "active")));
-        if (!member) throw new FinanceError("invalid_input");
-      }
-      const rawFee = str(fd.get("serviceFee"));
-      const fee = rawFee ? num(fd.get("serviceFee")) : Number(service.defaultPrice);
-      const discount = num(fd.get("discountAmount"));
-      if (!Number.isFinite(fee) || !Number.isFinite(discount) || fee < 0 || discount < 0 || discount > fee) throw new FinanceError("invalid_amount");
-      const data = { customerId, serviceId, serviceKey: service.serviceKey ?? "other-admin", responsibleEmployeeId, priority, openedAt, dueDate, serviceFee: fee, discountAmount: discount, feeCurrency: ctx.org.currency, notes: optStr(fd.get("notes")) };
-=======
         const [member] = await tx
           .select({ id: organizationMembers.id })
           .from(organizationMembers)
@@ -268,7 +232,6 @@ export async function saveCase(fd: FormData) {
         notes: optStr(fd.get("notes")),
       };
 
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
       if (id) {
         const [old] = await tx
           .select()
@@ -277,27 +240,6 @@ export async function saveCase(fd: FormData) {
           .for("update");
 
         if (!old) throw new FinanceError("not_found");
-<<<<<<< HEAD
-        if (["closed", "cancelled"].includes(old.status) || old.outcomeStatus) throw new FinanceError("cannot_edit_final");
-        if (old.customerId !== customerId || (old.parentCaseId && old.parentCaseId !== parentCaseId)) throw new FinanceError("case_has_history");
-        if (old.feeStatus !== "unbilled" && (fee !== Number(old.serviceFee) || discount !== Number(old.discountAmount))) throw new FinanceError("cannot_edit_final");
-        if (old.serviceId !== serviceId) {
-          const existingTasks = await tx.select().from(caseTasks).where(and(eq(caseTasks.caseId, id), eq(caseTasks.organizationId, ctx.org.id)));
-          const existingReqs = await tx.select().from(caseRequirements).where(and(eq(caseRequirements.caseId, id), eq(caseRequirements.organizationId, ctx.org.id)));
-          if (old.status !== "new" || existingTasks.some((v) => v.status !== "pending") || existingReqs.some((v) => v.status !== "missing")) throw new FinanceError("case_has_history");
-          await tx.delete(caseRequirements).where(and(eq(caseRequirements.caseId, id), eq(caseRequirements.organizationId, ctx.org.id)));
-          await tx.delete(caseTasks).where(and(eq(caseTasks.caseId, id), eq(caseTasks.organizationId, ctx.org.id)));
-        }
-        await tx.update(cases).set({ ...data, licenseId: licenseId ?? old.licenseId, updatedAt: new Date() }).where(eq(cases.id, id));
-        if (isWorkflowKey(data.serviceKey)) await initializeCaseWorkflow(tx, ctx.org.id, id, data.serviceKey, service);
-        await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "UPDATE", entityType: "case", entityId: id, oldData: old, newData: data });
-        return { id };
-      }
-      const [row] = await tx.insert(cases).values({ ...data, parentCaseId, licenseId, organizationId: ctx.org.id, caseNumber: await nextNumber(tx, ctx.org.id, "case"), status: "new", feeStatus: "unbilled", createdBy: ctx.user.id, isDemo: ctx.org.isDemo }).returning();
-      if (isWorkflowKey(data.serviceKey)) await initializeCaseWorkflow(tx, ctx.org.id, row.id, data.serviceKey, service);
-      if (data.notes) await tx.insert(caseNotes).values({ organizationId: ctx.org.id, caseId: row.id, body: data.notes, visibility: "internal", createdBy: ctx.user.id });
-      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "case", entityId: row.id, newData: row });
-=======
 
         if (
           old.feeStatus !== "unbilled" &&
@@ -376,7 +318,6 @@ export async function saveCase(fd: FormData) {
         newData: row,
       });
 
->>>>>>> ffd2d809f0e0d51841b8bcf4d3d8aa2a47836544
       return { id: row.id };
     });
   });
@@ -397,17 +338,11 @@ export async function transitionCase(id: string, action: string) {
   return act(async () => {
     const tr = CASE_TRANSITIONS[action];
     if (!tr) throw new FinanceError("invalid_transition");
-    const ctx = await requireContext(tr.approve || action === "cancel" ? "cases.approve" : "cases.write");
+    const ctx = await requireContext(tr.approve ? "cases.approve" : "cases.write");
     await db.transaction(async (tx) => {
       const [row] = await tx.select().from(cases).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id))).for("update");
       if (!row) throw new FinanceError("not_found");
       if (!tr.from.includes(row.status)) throw new FinanceError("invalid_transition");
-      if (isWorkflowKey(row.serviceKey) && ["awaiting_review", "request_approval", "ready", "deliver", "close"].includes(action)) {
-        const state = await getCaseSnapshot(tx, ctx.org.id, id);
-        if (action === "awaiting_review" || action === "request_approval") {
-          if (state.tasks.some((task) => task.status !== "completed")) throw new FinanceError("case_task_incomplete");
-        } else assertCaseReady(state);
-      }
       await tx.update(cases).set({ status: tr.to, closedAt: tr.to === "closed" ? new Date().toISOString().slice(0, 10) : row.closedAt, updatedAt: new Date() }).where(eq(cases.id, id));
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: tr.approve ? "APPROVE" : tr.to === "cancelled" ? "CANCEL" : "UPDATE", entityType: "case", entityId: id, oldData: { status: row.status }, newData: { status: tr.to } });
     });
@@ -633,9 +568,6 @@ export async function deleteUnlinkedCaseAction(id: string) {
         tx.select({ id: generatedForms.id }).from(generatedForms).where(and(eq(generatedForms.caseId, id), eq(generatedForms.organizationId, ctx.org.id))).limit(1),
         tx.select({ id: letters.id }).from(letters).where(and(eq(letters.caseId, id), eq(letters.organizationId, ctx.org.id))).limit(1),
         tx.select({ id: caseFiles.id }).from(caseFiles).where(and(eq(caseFiles.caseId, id), eq(caseFiles.organizationId, ctx.org.id))).limit(1),
-        tx.select({ id: customerObligations.id }).from(customerObligations).where(and(eq(customerObligations.caseId, id), eq(customerObligations.organizationId, ctx.org.id))).limit(1),
-        tx.select({ id: casePlanSteps.id }).from(casePlanSteps).where(and(eq(casePlanSteps.caseId, id), eq(casePlanSteps.organizationId, ctx.org.id))).limit(1),
-        tx.select({ id: cases.id }).from(cases).where(and(eq(cases.parentCaseId, id), eq(cases.organizationId, ctx.org.id))).limit(1),
       ]);
       if (linked.some((x) => x.length > 0) || !["new", "cancelled"].includes(row.status)) throw new FinanceError("case_has_history");
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "DELETE", entityType: "case", entityId: row.id, oldData: row });
@@ -666,7 +598,6 @@ export async function uploadCaseFile(fd: FormData) {
   return act(async () => {
     const ctx = await requireContext("cases.write");
     const caseId = str(fd.get("caseId"));
-    const requirementId = optStr(fd.get("requirementId"));
     const file = formFile(fd.get("file"));
     if (!file) throw new FinanceError("invalid_input");
     const bytes = await readDocumentUpload(file);
@@ -678,12 +609,7 @@ export async function uploadCaseFile(fd: FormData) {
       if (!row) throw new FinanceError("not_found");
       const [f] = await tx.insert(attachments).values({ organizationId: ctx.org.id, fileName: file.name, mimeType: file.type || "application/octet-stream", fileSize: file.size, content: bytes.toString("base64"), uploadedBy: ctx.user.id }).returning();
       const [link] = await tx.insert(caseFiles).values({ organizationId: ctx.org.id, caseId, attachmentId: f.id, uploadedBy: ctx.user.id }).returning();
-      if (requirementId) {
-        const [req] = await tx.select().from(caseRequirements).where(and(eq(caseRequirements.id, requirementId), eq(caseRequirements.organizationId, ctx.org.id), eq(caseRequirements.caseId, caseId))).for("update");
-        if (!req) throw new FinanceError("invalid_input");
-        await tx.update(caseRequirements).set({ evidenceAttachmentId: f.id, status: "submitted", verifiedBy: null, verifiedAt: null }).where(eq(caseRequirements.id, req.id));
-      }
-      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "UPLOAD", entityType: "case_file", entityId: link.id, newData: { fileName: file.name, fileSize: file.size, sha256: checksum, requirementId } });
+      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "UPLOAD", entityType: "case_file", entityId: link.id, newData: { fileName: file.name, fileSize: file.size, sha256: checksum } });
     });
   });
 }
