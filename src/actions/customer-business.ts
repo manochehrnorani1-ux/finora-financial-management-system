@@ -71,7 +71,7 @@ export async function saveCustomerShareholder(fd: FormData) {
       organizationId: ctx.org.id, customerId, fullName: str(fd.get("fullName")),
       fatherName: optStr(fd.get("fatherName")), grandfatherName: optStr(fd.get("grandfatherName")),
       nationalId: optStr(fd.get("nationalId")), tin: optStr(fd.get("tin")), phone: optStr(fd.get("phone")), email: optStr(fd.get("email")),
-      province: optStr(fd.get("province")), district: optStr(fd.get("district")), area: optStr(fd.get("area")), address: optStr(fd.get("address")),
+      province: optStr(fd.get("province")), district: optStr(fd.get("district")), area: optStr(fd.get("area")), village: optStr(fd.get("village")), address: optStr(fd.get("address")),
       educationLevel: optStr(fd.get("educationLevel")), educationField: optStr(fd.get("educationField")),
       workExperienceYears: optionalInt(fd.get("workExperienceYears")),
       ownershipPercentage: num(fd.get("ownershipPercentage")), shareValue: num(fd.get("shareValue")),
@@ -159,7 +159,7 @@ export async function saveCustomerGuarantee(fd: FormData) {
       guarantorNationalId: optStr(fd.get("guarantorNationalId")), guarantorTin: optStr(fd.get("guarantorTin")), guarantorPhone: optStr(fd.get("guarantorPhone")),
       guarantorProvince: optStr(fd.get("guarantorProvince")), guarantorDistrict: optStr(fd.get("guarantorDistrict")), guarantorArea: optStr(fd.get("guarantorArea")), guarantorVillage: optStr(fd.get("guarantorVillage")),
       businessName: optStr(fd.get("businessName")), businessType: optStr(fd.get("businessType")), businessLicenseNumber: optStr(fd.get("businessLicenseNumber")),
-      businessLicenseExpiry: optStr(fd.get("businessLicenseExpiry")), businessIssuingAuthority: optStr(fd.get("businessIssuingAuthority")), businessAddress: optStr(fd.get("businessAddress")),
+      businessLicenseExpiry: optStr(fd.get("businessLicenseExpiry")), businessIssuingAuthority: optStr(fd.get("businessIssuingAuthority")), businessPhone: optStr(fd.get("businessPhone")), businessEmail: optStr(fd.get("businessEmail")), businessAddress: optStr(fd.get("businessAddress")),
       guaranteeType: str(fd.get("guaranteeType")) || "shareholder", startDate: optStr(fd.get("startDate")), endDate: optStr(fd.get("endDate")),
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
