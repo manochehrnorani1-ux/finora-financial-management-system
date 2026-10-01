@@ -44,6 +44,8 @@ export const ERROR_MESSAGES: Record<string, [string, string, string]> = {
   official_source_required: ["منبع رسمی معتبر .gov.af الزامی است", "باوري رسمي .gov.af سرچینه اړینه ده", "A valid official .gov.af source is required"],
   legal_review_required: ["این مورد نیازمند بررسی قانونی است و قابل تأیید نهایی نیست", "دا موضوع قانوني ارزونې ته اړتیا لري او وروستی تایید نه شي کېدای", "This item requires legal review and cannot be finally approved"],
   amount_exceeds_due: ["مبلغ از باقی‌مانده قابل پرداخت بیشتر است", "مبلغ له پاتې پور څخه زیات دی", "Amount exceeds the outstanding balance"],
+  tax_settlement_required: ["برای ثبت پرداخت مالیاتی، رکورد تصفیه مالیاتی این دوسیه لازم است", "د مالیاتي تادیې لپاره د دې دوسیې د مالیاتي تصفیې ریکارډ اړین دی", "A tax settlement record is required before recording a tax payment"],
+  tax_settlement_ambiguous: ["برای این دوسیه بیش از یک تصفیه مالیاتی فعال است و پرداخت قابل ثبت نیست", "د دې دوسیې لپاره له یوې څخه زیاتې مالیاتي تصفیې دي او تادیه نه شي ثبتېدای", "Multiple tax settlements exist for this case; payment cannot be recorded safely"],
   approval_required: ["برای این مورد منظوری لازم است", "د دې مورد لپاره منظوري اړینه ده", "Approval is required for this item"],
   forbidden_admin: ["فقط مدیر سیستم می‌تواند مدیر سیستم دیگر را مدیریت کند", "یوازې د سیسټم مدیر بل مدیر اداره کولی شي", "Only a system admin can manage another admin"],
   forbidden_finalize: ["شما صلاحیت نهایی‌سازی را ندارید", "تاسو د نهایي کولو صلاحیت نه لرئ", "You do not have permission to finalize"],
