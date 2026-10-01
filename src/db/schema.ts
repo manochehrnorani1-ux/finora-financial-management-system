@@ -199,6 +199,8 @@ export const caseWorkflowSteps = pgTable(
     actionRequired: text("action_required"),
     dueDate: date("due_date"),
     amount: money("amount"),
+    paidAmount: money("paid_amount"),
+    remainingAmount: money("remaining_amount"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     completedBy: uuid("completed_by").references(() => profiles.id),
     notes: text("notes"),
@@ -212,6 +214,21 @@ export const caseWorkflowSteps = pgTable(
     index("case_workflow_steps_status_idx").on(t.organizationId, t.status, t.dueDate),
   ],
 );
+
+export const caseWorkflowPayments = pgTable("case_workflow_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  caseId: uuid("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
+  workflowStepId: uuid("workflow_step_id").notNull().references(() => caseWorkflowSteps.id, { onDelete: "cascade" }),
+  amount: money("amount"),
+  currency: text("currency").notNull().default("AFN"),
+  paymentDate: date("payment_date").notNull(),
+  paymentMethod: text("payment_method"),
+  referenceNumber: text("reference_number"),
+  notes: text("notes"),
+  recordedBy: uuid("recorded_by").references(() => profiles.id),
+  createdAt: createdAt(),
+}, (t) => [index("case_workflow_payments_step_idx").on(t.organizationId, t.workflowStepId, t.paymentDate), index("case_workflow_payments_case_idx").on(t.organizationId, t.caseId, t.paymentDate)]);
 
 export const documents = pgTable(
   "documents",
