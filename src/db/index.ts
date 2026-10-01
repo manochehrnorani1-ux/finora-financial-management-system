@@ -3,6 +3,8 @@ import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
 
+// FINORA uses a server-only PostgreSQL connection. Keep DATABASE_URL out of client bundles.
+
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is required");
 }

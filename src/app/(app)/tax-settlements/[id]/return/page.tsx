@@ -12,6 +12,13 @@ import { formatDate, formatDateTime } from "@/lib/jalali";
 
 const SKEY: Record<string, string> = { calculated: "calculated", approved: "approved", part_paid: "part_paid", paid: "paid", REQUIRES_LEGAL_REVIEW: "requiresLegalReview" };
 
+const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex items-baseline justify-between gap-3 border-b border-dashed border-slate-300 py-1.5 text-sm">
+    <span className="shrink-0 text-slate-600">{label}</span>
+    <span className="text-end font-medium text-slate-900">{value ?? "—"}</span>
+  </div>
+);
+
 export default async function TaxReturnPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { ctx, t, fmt } = await pageContext("tax_settlements.read");
@@ -40,13 +47,6 @@ export default async function TaxReturnPrintPage({ params }: { params: Promise<{
   const approved = ["approved", "part_paid", "paid"].includes(s.status);
   const needsReview = s.status === "REQUIRES_LEGAL_REVIEW";
   const today = new Date();
-
-  const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="flex items-baseline justify-between gap-3 border-b border-dashed border-slate-300 py-1.5 text-sm">
-      <span className="shrink-0 text-slate-600">{label}</span>
-      <span className="text-end font-medium text-slate-900">{value ?? "—"}</span>
-    </div>
-  );
 
   return (
     <>

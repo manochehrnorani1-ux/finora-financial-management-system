@@ -6,5 +6,5 @@ import { LoginForm } from "../AuthForms";
 export default async function LoginPage() {
   await ensureBootstrap();
   if (await getSessionUser()) redirect("/dashboard");
-  return <LoginForm demoHint={{ email: DEFAULT_ADMIN.email, password: DEFAULT_ADMIN.password, others: ["manager@finora.af", "accountant@finora.af", "operator@finora.af", "viewer@finora.af"] }} />;
+  return <LoginForm demoHint={process.env.NODE_ENV === "production" ? null : { email: DEFAULT_ADMIN.email, password: DEFAULT_ADMIN.password, others: ["manager@finora.af", "accountant@finora.af", "operator@finora.af", "viewer@finora.af"] }} />;
 }
