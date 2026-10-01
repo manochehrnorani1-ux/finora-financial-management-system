@@ -48,13 +48,6 @@ export default async function TaxReturnPrintPage({ params }: { params: Promise<{
   const needsReview = s.status === "REQUIRES_LEGAL_REVIEW";
   const today = new Date();
 
-  const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="flex items-baseline justify-between gap-3 border-b border-dashed border-slate-300 py-1.5 text-sm">
-      <span className="shrink-0 text-slate-600">{label}</span>
-      <span className="text-end font-medium text-slate-900">{value ?? "—"}</span>
-    </div>
-  );
-
   return (
     <>
       <PageHeader
