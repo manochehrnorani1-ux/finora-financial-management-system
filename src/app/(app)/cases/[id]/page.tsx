@@ -79,7 +79,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       {workflowSteps.length > 0 && (
         <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
           <div className="space-y-3">
-            {workflowSteps.map((step) => (
+            {workflowSteps.map((step) => {\n              const taxSettlementForPayment = c.workflowKey === "tax_settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;\n              const stepAmount = taxSettlementForPayment ? Number(taxSettlementForPayment.taxAmount ?? 0) : Number(step.amount ?? 0);\n              const stepPaid = taxSettlementForPayment ? Number(taxSettlementForPayment.paidAmount ?? 0) : Number(step.paidAmount ?? 0);\n              const stepRemaining = taxSettlementForPayment ? Number(taxSettlementForPayment.remainingAmount ?? 0) : Number(step.remainingAmount ?? 0);\n              return (
               <div key={step.id} className="rounded-lg border border-slate-200 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -91,9 +91,9 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                 <div className="mt-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
                   <span>اقدام: {step.actionRequired || "—"}</span>
                   <span>موعد: {step.dueDate ? formatDate(step.dueDate, fmt) : "—"}</span>
-                  <span>مبلغ: {step.amount === null ? "—" : <Money value={step.amount} currency={c.feeCurrency} />}</span>
-                  <span>پرداخت‌شده: {Number(step.paidAmount ?? 0) > 0 ? <Money value={step.paidAmount} currency={c.feeCurrency} /> : "—"}</span>
-                  <span>باقی‌مانده: {Number(step.remainingAmount ?? 0) > 0 ? <Money value={step.remainingAmount} currency={c.feeCurrency} /> : "—"}</span>
+                  <span>مبلغ: {stepAmount <= 0 ? "—" : <Money value={stepAmount} currency={c.feeCurrency} />}</span>
+                  <span>پرداخت‌شده: {stepPaid > 0 ? <Money value={stepPaid} currency={c.feeCurrency} /> : "—"}</span>
+                  <span>باقی‌مانده: {stepRemaining > 0 ? <Money value={stepRemaining} currency={c.feeCurrency} /> : "—"}</span>
                 </div>
                 {ctx.can("cases.write") && step.status !== "completed" && (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -110,7 +110,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                         { name: "notes", label: "یادداشت", type: "textarea", defaultValue: step.notes ?? undefined, full: true },
                       ]}
                     />
-                    {step.status === "active" && Number(step.amount ?? 0) > 0 && Number(step.remainingAmount ?? 0) > 0 && <FormDialog title="ثبت پرداخت مرحله" triggerLabel="ثبت پرداخت" triggerSize="sm" action={recordCaseWorkflowPaymentAction} hidden={{ stepId: step.id }} fields={[{ name: "amount", label: "مبلغ پرداخت (" + c.feeCurrency + ")", type: "number", required: true, defaultValue: step.remainingAmount }, { name: "paymentDate", label: "تاریخ پرداخت", type: "date", required: true }, { name: "paymentMethod", label: "روش پرداخت" }, { name: "referenceNumber", label: "شماره مرجع/رسید" }, { name: "notes", label: "یادداشت", type: "textarea", full: true }]} />}
+                    {step.status === "active" && stepAmount > 0 && stepRemaining > 0 && <FormDialog title="ثبت پرداخت مرحله" triggerLabel="ثبت پرداخت" triggerSize="sm" action={recordCaseWorkflowPaymentAction} hidden={{ stepId: step.id }} fields={[{ name: "amount", label: "مبلغ پرداخت (" + c.feeCurrency + ")", type: "number", required: true, defaultValue: stepRemaining }, { name: "paymentDate", label: "تاریخ پرداخت", type: "date", required: true }, { name: "paymentMethod", label: "روش پرداخت" }, { name: "referenceNumber", label: "شماره مرجع/رسید" }, { name: "notes", label: "یادداشت", type: "textarea", full: true }]} />}
                     {step.status === "active" && <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />}
                   </div>
                 )}
