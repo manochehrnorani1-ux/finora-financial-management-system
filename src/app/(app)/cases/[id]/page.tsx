@@ -1,0 +1,120 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { attachments, bankAccounts, caseFiles, caseNotes, cases, customers, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, cashAccounts } from "@/db/schema";
+import { pageContext } from "@/lib/page";
+import { saveCase, transitionCase, addCaseNoteForm, uploadCaseFile, saveDocument, deleteUnlinkedCaseAction } from "@/actions/master";
+import { receiveCaseFee } from "@/actions/finance";
+import { ActionButton, FormDialog, PrintButton, type Field } from "@/components/forms";
+import { Badge, Card, KV, Money, PageHeader, Stat, Table } from "@/components/ui";
+import { formatDate, formatDateTime } from "@/lib/jalali";
+
+const STATUS_KEY: Record<string, string> = { new: "newCase", reviewing: "reviewing", missing_documents: "missingDocuments", in_progress: "inProgress", awaiting_review: "awaitingReview", awaiting_approval: "awaitingApproval", ready_for_delivery: "readyForDelivery", delivered: "delivered", closed: "closed", cancelled: "cancelled" };
+
+export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { ctx, t, fmt } = await pageContext("cases.read");
+  const [record] = await db.select({ c: cases, customer: customers, service: services, employee: profiles.fullName })
+    .from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).leftJoin(services, eq(cases.serviceId, services.id)).leftJoin(profiles, eq(cases.responsibleEmployeeId, profiles.id)).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id)));
+  if (!record) notFound();
+  const c = record.c;
+  const [customerList, serviceList, members, notes, docs, fees, files, settlements, forms, incomeRows, cash, bank] = await Promise.all([
+    db.select({ id: customers.id, name: customers.name, code: customers.customerCode }).from(customers).where(eq(customers.organizationId, ctx.org.id)).orderBy(customers.name),
+    db.select({ id: services.id, name: services.name }).from(services).where(eq(services.organizationId, ctx.org.id)),
+    db.select({ id: profiles.id, name: profiles.fullName }).from(organizationMembers).innerJoin(profiles, eq(organizationMembers.userId, profiles.id)).where(and(eq(organizationMembers.organizationId, ctx.org.id), eq(organizationMembers.status, "active"))),
+    db.select({ n: caseNotes, user: profiles.fullName }).from(caseNotes).leftJoin(profiles, eq(caseNotes.createdBy, profiles.id)).where(and(eq(caseNotes.caseId, id), eq(caseNotes.organizationId, ctx.org.id))).orderBy(desc(caseNotes.createdAt)),
+    db.select().from(documents).where(and(eq(documents.caseId, id), eq(documents.organizationId, ctx.org.id))).orderBy(desc(documents.createdAt)),
+    db.select({ r: serviceFeeReceipts, user: profiles.fullName }).from(serviceFeeReceipts).leftJoin(profiles, eq(serviceFeeReceipts.issuedBy, profiles.id)).where(and(eq(serviceFeeReceipts.caseId, id), eq(serviceFeeReceipts.organizationId, ctx.org.id))).orderBy(desc(serviceFeeReceipts.createdAt)),
+    db.select({ f: caseFiles, a: attachments, user: profiles.fullName }).from(caseFiles).innerJoin(attachments, eq(caseFiles.attachmentId, attachments.id)).leftJoin(profiles, eq(caseFiles.uploadedBy, profiles.id)).where(and(eq(caseFiles.caseId, id), eq(caseFiles.organizationId, ctx.org.id))).orderBy(desc(caseFiles.createdAt)),
+    db.select().from(taxSettlements).where(and(eq(taxSettlements.caseId, id), eq(taxSettlements.organizationId, ctx.org.id))).orderBy(desc(taxSettlements.createdAt)),
+    db.select().from(generatedForms).where(and(eq(generatedForms.caseId, id), eq(generatedForms.organizationId, ctx.org.id))).orderBy(desc(generatedForms.createdAt)),
+    db.select().from(incomes).where(and(eq(incomes.caseId, id), eq(incomes.organizationId, ctx.org.id))).orderBy(desc(incomes.createdAt)),
+    db.select({ id: cashAccounts.id, name: cashAccounts.name }).from(cashAccounts).where(and(eq(cashAccounts.organizationId, ctx.org.id), eq(cashAccounts.isActive, true))),
+    db.select({ id: bankAccounts.id, label: sql<string>`${bankAccounts.bankName} || ' — ' || ${bankAccounts.accountNumber}` }).from(bankAccounts).where(and(eq(bankAccounts.organizationId, ctx.org.id), eq(bankAccounts.isActive, true))),
+  ]);
+  const feeTotal = Math.max(0, Number(c.serviceFee) - Number(c.discountAmount));
+  const paid = fees.reduce((sum, r) => sum + Number(r.r.paidAmount), 0);
+  const remaining = Math.max(0, feeTotal - paid);
+  const paymentTargets = [...cash.map((a) => ({ value: `cash:${a.id}`, label: `${t("cash")}: ${a.name}` })), ...bank.map((a) => ({ value: `bank:${a.id}`, label: `${t("bank")}: ${a.label}` }))];
+  const caseFields: Field[] = [
+    { name: "customerId", label: t("customer"), type: "select", required: true, defaultValue: c.customerId, options: customerList.map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` })) },
+    { name: "serviceId", label: t("service"), type: "select", defaultValue: c.serviceId, options: serviceList.map((x) => ({ value: x.id, label: x.name })) },
+    { name: "openedAt", label: t("openingDate"), type: "date", required: true, defaultValue: c.openedAt },
+    { name: "responsibleEmployeeId", label: t("responsibleEmployee"), type: "select", defaultValue: c.responsibleEmployeeId, options: members.map((x) => ({ value: x.id, label: x.name })) },
+    { name: "priority", label: t("priority"), type: "select", required: true, defaultValue: c.priority, options: ["normal", "high", "urgent"].map((x) => ({ value: x, label: t(x) })) },
+    { name: "serviceFee", label: `${t("caseFee")} (${ctx.org.currency})`, type: "number", required: true, defaultValue: c.serviceFee },
+    { name: "discountAmount", label: `${t("discount")} (${ctx.org.currency})`, type: "number", required: true, defaultValue: c.discountAmount },
+    { name: "notes", label: t("internalNote"), type: "textarea", defaultValue: c.notes, full: true },
+  ];
+  const statusActions: { action: string; label: string; variant: string; needsApproval?: boolean }[] = ({
+    new: [{ action: "review", label: "reviewing", variant: "primary" }, { action: "cancel", label: "cancelled", variant: "danger" }],
+    reviewing: [{ action: "missing", label: "missingDocuments", variant: "warning" }, { action: "progress", label: "inProgress", variant: "primary" }],
+    missing_documents: [{ action: "progress", label: "inProgress", variant: "primary" }, { action: "cancel", label: "cancelled", variant: "danger" }],
+    in_progress: [{ action: "missing", label: "missingDocuments", variant: "warning" }, { action: "awaiting_review", label: "awaitingReview", variant: "primary" }],
+    awaiting_review: [{ action: "progress", label: "inProgress", variant: "secondary" }, { action: "request_approval", label: "awaitingApproval", variant: "warning" }, { action: "ready", label: "readyForDelivery", variant: "primary", needsApproval: true }],
+    awaiting_approval: [{ action: "progress", label: "inProgress", variant: "secondary" }, { action: "ready", label: "readyForDelivery", variant: "primary", needsApproval: true }],
+    ready_for_delivery: [{ action: "deliver", label: "delivered", variant: "primary", needsApproval: true }],
+    delivered: [{ action: "close", label: "closed", variant: "secondary", needsApproval: true }],
+  } as Record<string, { action: string; label: string; variant: string; needsApproval?: boolean }[]>)[c.status] ?? [];
+  return (
+    <>
+      <PageHeader title={<span className="flex flex-wrap items-center gap-2">{c.caseNumber}<Badge status={c.status === "closed" || c.status === "delivered" ? "completed" : c.status === "cancelled" || c.status === "missing_documents" ? "rejected" : "under_review"} label={t(STATUS_KEY[c.status] ?? c.status)} /></span>}
+        subtitle={`${record.customer.name} · ${record.service?.name ?? t("services")}`}
+        actions={<>
+          <Link href="/cases" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">← {t("back")}</Link>
+          <PrintButton label={t("print")} audit={{ entityType: "case", entityId: id }} />
+          {ctx.can("cases.write") && !["closed", "cancelled"].includes(c.status) && <FormDialog title={t("edit")} triggerLabel={t("edit")} triggerVariant="secondary" action={saveCase} fields={caseFields} hidden={{ id: c.id }} wide />}
+          {statusActions.filter((x) => !x.needsApproval || ctx.can("cases.approve")).filter((x) => x.needsApproval || ctx.can("cases.write")).map((x) => <ActionButton key={x.action} action={transitionCase} args={[c.id, x.action]} label={t(x.label)} variant={x.variant} confirm={x.action === "cancel" ? t("confirm") + "?" : undefined} />)}
+          {ctx.can("cases.write") && !["closed", "cancelled"].includes(c.status) && <ActionButton action={transitionCase} args={[c.id, "cancel"]} label={t("cancel")} variant="danger" confirm={t("confirm") + "?"} />}
+          {ctx.can("cases.delete") && ["new", "cancelled"].includes(c.status) && <ActionButton action={deleteUnlinkedCaseAction} args={[c.id]} label={t("delete")} variant="danger" confirm={t("confirmDelete")} />}
+        </>} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <Stat label={t("feeTotal")} value={<Money value={feeTotal} currency={c.feeCurrency} />} tone="blue" />
+        <Stat label={t("paidAmount")} value={<Money value={paid} currency={c.feeCurrency} />} tone="green" />
+        <Stat label={t("remainingAmount")} value={<Money value={remaining} currency={c.feeCurrency} />} tone={remaining > 0 ? "amber" : "green"} />
+        <Stat label={t("status")} value={t(STATUS_KEY[c.status] ?? c.status)} />
+      </div>
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card title={t("details")} className="lg:col-span-1">
+          <KV items={[[t("caseNumber"), c.caseNumber], [t("customer"), <Link key="c" href={`/customer-accounts/${c.customerId}`} className="text-emerald-700">{record.customer.name}</Link>], [t("service"), record.service?.name ?? "-"], [t("openingDate"), formatDate(c.openedAt, fmt)], [t("responsibleEmployee"), record.employee ?? "-"], [t("priority"), t(c.priority)], [t("caseFee"), <Money key="f" value={c.serviceFee} currency={c.feeCurrency} />], [t("discount"), <Money key="d" value={c.discountAmount} currency={c.feeCurrency} />], [t("feeStatus"), t(c.feeStatus)], [t("createdBy"), c.createdBy === ctx.user.id ? ctx.user.fullName : ""]]} />
+          {c.notes && <p className="mt-3 text-sm text-slate-600 whitespace-pre-wrap">{c.notes}</p>}
+        </Card>
+        <Card title={t("caseFee")} className="lg:col-span-2" actions={ctx.can("cases.write") && remaining > 0 && <FormDialog title={t("issueReceipt")} triggerLabel={`+ ${t("issueReceipt")}`} action={receiveCaseFee} hidden={{ caseId: c.id }} fields={[
+          { name: "amount", label: `${t("amount")} (${c.feeCurrency})`, type: "number", required: true, defaultValue: remaining },
+          { name: "account", label: t("paymentMethod"), type: "select", required: true, defaultValue: paymentTargets[0]?.value, options: paymentTargets },
+          { name: "date", label: t("date"), type: "date", required: true },
+          { name: "description", label: t("description"), type: "textarea" },
+        ]} successPath="/receipts/{id}" />}>
+          <Table headers={[t("receiptNumber"), t("date"), t("amount"), t("paymentMethod"), t("user"), t("actions")]} empty={t("noData")} rows={fees.map(({ r, user }) => [<span key="n" className="font-mono text-xs">{r.receiptNumber}</span>, formatDateTime(r.createdAt, fmt), <Money key="a" value={r.paidAmount} currency={r.currency} />, t(r.paymentMethod), user ?? "-", <Link key="p" href={`/receipts/${r.id}`} className="text-emerald-700 text-xs">{t("printReceipt")}</Link>])} footer={[t("total"), "", <Money key="t" value={paid} currency={c.feeCurrency} />, "", "", ""]} />
+          {incomeRows.length > 0 && <p className="mt-2 text-xs text-slate-500">{t("income")} · {incomeRows.map((x) => x.incomeNumber).join(", ")} — {t("receivable")}</p>}
+        </Card>
+        <Card title={t("documents")} className="lg:col-span-2" actions={<>
+          {ctx.can("documents.write") && <FormDialog title={t("create")} triggerLabel={`+ ${t("document")}`} action={saveDocument} hidden={{ caseId: c.id, customerId: c.customerId }} fields={[
+            { name: "title", label: t("title"), required: true, full: true },
+            { name: "documentType", label: t("documentType"), type: "select", required: true, defaultValue: "letter", options: ["letter", "application", "certificate", "license", "other"].map((x) => ({ value: x, label: t(x) })) },
+            { name: "documentDate", label: t("date"), type: "date", required: true },
+            { name: "officialNumber", label: t("officialNumber") },
+            { name: "legalReference", label: t("legalReference") },
+            { name: "description", label: t("description"), type: "textarea", full: true },
+          ]} />}
+          <Link href={`/official-forms?caseId=${c.id}`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs">{t("officialForms")}</Link>
+        </>}>
+          <Table headers={[t("documentNumber"), t("title"), t("documentType"), t("date"), t("status"), ""]} empty={t("noData")} rows={docs.map((d) => [<Link key="n" href={`/documents/${d.id}`} className="font-mono text-xs text-emerald-700">{d.documentNumber}</Link>, d.title, t(d.documentType), formatDate(d.documentDate, fmt), <Badge key="s" status={d.status} label={t(d.status)} />, <Link key="v" href={`/documents/${d.id}`} className="text-emerald-700 text-xs">{t("view")}</Link>])} />
+        </Card>
+        <Card title={t("files")} className="lg:col-span-1" actions={ctx.can("cases.write") && <FormDialog title={t("upload")} triggerLabel={t("upload")} triggerSize="sm" action={uploadCaseFile} hidden={{ caseId: c.id }} fields={[{ name: "file", label: t("files"), type: "file", required: true, full: true }]} />}>
+          <ul className="divide-y divide-slate-100 text-sm">{files.length === 0 && <li className="py-4 text-center text-slate-400">{t("noData")}</li>}{files.map(({ f, a }) => <li key={f.id} className="py-2 flex items-center justify-between gap-2"><a href={`/api/files/${a.id}`} target="_blank" rel="noreferrer" className="truncate text-emerald-700">{a.fileName}</a><span className="text-xs text-slate-400" dir="ltr">{(a.fileSize / 1024).toFixed(1)} KB</span></li>)}</ul>
+        </Card>
+        <Card title={t("caseTimeline")} className="lg:col-span-2" actions={ctx.can("cases.write") && <FormDialog title={t("addNote")} triggerLabel={`+ ${t("addNote")}`} action={addCaseNoteForm} hidden={{ caseId: c.id }} fields={[{ name: "body", label: t("internalNote"), type: "textarea", required: true, full: true }]} />}>
+          <ul className="divide-y divide-slate-100">{notes.length === 0 && <li className="py-4 text-center text-sm text-slate-400">{t("noData")}</li>}{notes.map(({ n, user }) => <li key={n.id} className="py-3"><div className="flex justify-between gap-2 text-xs text-slate-400"><span>{user ?? "-"} · {t("internalNote")}</span><span>{formatDateTime(n.createdAt, fmt)}</span></div><p className="mt-1 text-sm whitespace-pre-wrap">{n.body}</p></li>)}</ul>
+        </Card>
+        <Card title={t("taxSettlement")} className="lg:col-span-1" actions={<Link href={`/tax-settlements?caseId=${c.id}`} className="text-xs text-emerald-700">{t("details")} →</Link>}>
+          <ul className="divide-y divide-slate-100 text-sm">{settlements.length === 0 && <li className="py-4 text-center text-slate-400">{t("noData")}</li>}{settlements.map((s) => <li key={s.id} className="py-2"><Link href={`/tax-settlements/${s.id}`} className="font-mono text-xs text-emerald-700">{s.settlementNumber}</Link><div className="mt-1 flex justify-between"><span>{t(s.status === "REQUIRES_LEGAL_REVIEW" ? "requiresLegalReview" : s.status)}</span><Money value={s.taxAmount} currency={ctx.org.currency} /></div></li>)}</ul>
+        </Card>
+        <Card title={t("officialForms")} className="lg:col-span-1">
+          <ul className="divide-y divide-slate-100 text-sm">{forms.length === 0 && <li className="py-4 text-center text-slate-400">{t("noData")}</li>}{forms.map((f) => <li key={f.id} className="py-2"><Link href={`/generated-forms/${f.id}`} className="text-emerald-700">{f.formNameSnapshot}</Link><div className="text-xs text-slate-500">{t("formVersion")} {f.versionSnapshot} · {t(f.matchStatus === "LEGAL_REVIEW_REQUIRED" ? "legalReviewRequired" : f.matchStatus)}</div></li>)}</ul>
+        </Card>
+      </div>
+    </>
+  );
+}
