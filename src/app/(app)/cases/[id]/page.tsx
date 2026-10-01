@@ -119,7 +119,8 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                     {step.status === "active" && <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />}
                   </div>
                 )}
-              </div>\n            })}
+              </div>
+            })}
           </div>
         </Card>
       )}
