@@ -140,7 +140,7 @@ export async function saveCustomerBranch(fd: FormData) {
       licenseNumber: optStr(fd.get("licenseNumber")), issueDate: optStr(fd.get("issueDate")), expiryDate: optStr(fd.get("expiryDate")),
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
-    await requireCustomer(db, customerId, ctx.org.id);
+    await requireCustomer(customerId, ctx.org.id);
     if (data.representativeEmployeeId) {
       const [employee] = await db.select({ id: customerEmployees.id }).from(customerEmployees).where(and(
         eq(customerEmployees.id, data.representativeEmployeeId),
