@@ -111,7 +111,7 @@ export async function saveOrganizationSettings(fd: FormData) {
     const logoBytes = await readLogoUpload(logoFile);
     await db.transaction(async (tx) => {
       const [old] = await tx.select().from(organizations).where(eq(organizations.id, ctx.org.id));
-      let logoUrl = data.logoUrl;
+      let logoUrl = old?.logoUrl ?? data.logoUrl;
       if (logoBytes && logoFile) {
         const [attachment] = await tx.insert(attachments).values({
           organizationId: ctx.org.id,
@@ -272,7 +272,7 @@ export async function createDemoDataAction() {
 
 export async function createOrganizationAction(fd: FormData) {
   return act(async () => {
-    const ctx = await requireContext();
+    const ctx = await requireContext("users.manage");
     const name = str(fd.get("name"));
     if (!name) throw new FinanceError("invalid_input");
     const { createOrganization } = await import("@/lib/seed");
