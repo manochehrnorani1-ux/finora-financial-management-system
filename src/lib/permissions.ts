@@ -101,3 +101,17 @@ export const ROLE_LABELS: Record<RoleKey, { fa: string; ps: string; en: string }
   operator: { fa: "اپراتور", ps: "اپریټر", en: "Operator" },
   viewer: { fa: "بیننده", ps: "لیدونکی", en: "Viewer" },
 };
+
+
+/**
+ * System-management access is intentionally derived from the existing permission model.
+ * No new database permission is required: the built-in admin role is the system administrator,
+ * while a non-admin must hold every existing system-control permission below.
+ */
+export const SYSTEM_MANAGEMENT_PERMISSIONS: Permission[] = ["users.manage", "audit.read", "backup.manage", "settings.manage"];
+
+export function canAccessSystemManagement(roleKey: RoleKey, permissions: Iterable<string>) {
+  if (roleKey === "admin") return true;
+  const set = permissions instanceof Set ? permissions : new Set(permissions);
+  return SYSTEM_MANAGEMENT_PERMISSIONS.every((p) => set.has(p));
+}
