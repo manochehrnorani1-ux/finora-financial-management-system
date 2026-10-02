@@ -6,7 +6,7 @@ import { auditLogs, backups, organizationMembers, organizations, systemSettings 
 import { pageContext } from "@/lib/page";
 import { canAccessSystemManagement } from "@/lib/permissions";
 import { createOrganizationAction } from "@/actions/admin";
-import { Card, Stat, FormDialog, PageHeader } from "@/components/ui";
+import { Card, Stat, PageHeader } from "@/components/ui";
 import { FormDialog as ActionFormDialog } from "@/components/forms";
 import { redirect } from "next/navigation";
 
