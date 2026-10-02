@@ -28,7 +28,7 @@ export default async function CashPage({ searchParams }: { searchParams: SP }) {
   ];
   return (
     <>
-      <PageHeader title={t("cash")} subtitle={t("cashReport")} actions={canWrite && <>
+      <PageHeader title={t("cash")} subtitle={t("cashReport")} actions={<><a href={`/print/reports?type=cash&${new URLSearchParams(Object.fromEntries(Object.entries(f).filter(([, v]) => v)) as Record<string, string>)}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">چاپ / PDF</a>{canWrite && <>
         <FormDialog title={t("cashIn")} triggerLabel={`+ ${t("cashIn")}`} action={cashOperationAction} fields={opFields("in")} />
         <FormDialog title={t("cashOut")} triggerLabel={`− ${t("cashOut")}`} triggerVariant="danger" action={cashOperationAction} fields={opFields("out")} />
         {ctx.can("bank.transfer") && <FormDialog title={t("transfer")} triggerLabel={t("transfer")} triggerVariant="warning" action={transferAction} fields={[
@@ -39,7 +39,7 @@ export default async function CashPage({ searchParams }: { searchParams: SP }) {
           { name: "description", label: t("description"), type: "textarea" },
         ]} />}
         <FormDialog title={t("cashAccount")} triggerLabel={`+ ${t("cashAccount")}`} triggerVariant="secondary" action={saveCashAccount} fields={[{ name: "name", label: t("name"), required: true, full: true }, { name: "openingBalance", label: `${t("openingBalance")} (${cur})`, type: "number", defaultValue: 0 }]} />
-      </>} />
+      </>}</>} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <Stat label={t("cashBalance")} value={<Money value={r.balance} currency={cur} />} tone="blue" />
         <Stat label={t("in")} value={<Money value={r.totalIn} currency={cur} />} tone="green" />

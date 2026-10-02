@@ -6,7 +6,7 @@ import { pageContext, sp1, type SP } from "@/lib/page";
 import { auditReport, bankReport, cashReport, caseReport, complianceReport, customerLedgerReport, dashboardData, expenseReport, incomeReport, profitLoss, serviceFeeReport, taxReport, taxSettlementReport, transactionReport, trialBalance, type ReportFilters } from "@/lib/reports";
 import { saveReportPreset, deleteReportPreset } from "@/actions/admin";
 import { Badge, Card, Money, PageHeader, Stat, Table } from "@/components/ui";
-import { ActionButton, FormDialog, PrintButton } from "@/components/forms";
+import { ActionButton, FormDialog } from "@/components/forms";
 import { formatDate, formatDateTime, jalaliMonthRange, jalaliQuarterRange, jalaliYearRange, todayIso, todayJalali } from "@/lib/jalali";
 import type { Metadata } from "next";
 import { CURRENCIES } from "@/lib/format";
@@ -136,7 +136,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: SP }
   return (
     <>
       <PageHeader title={t("reports")} subtitle={`${t(LABEL[type])} · ${from ? formatDate(from, fmt) : ""} → ${to ? formatDate(to, fmt) : ""}`} actions={<>
-        <PrintButton label={t("print")} audit={{ entityType: "report" }} />
+        <a href={`/print/reports?${filterQS}`} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">{t("print")} / PDF</a>
         {canExport && <a href={`/api/reports/export?format=csv&${filterQS}`} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">{t("exportCsv")}</a>}
         {canExport && <a href={`/api/reports/export?format=xls&${filterQS}`} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">{t("exportExcel")}</a>}
         <FormDialog title={t("savePreset")} triggerLabel={t("savePreset")} triggerVariant="secondary" action={saveReportPreset} hidden={{ reportType: type, filters: JSON.stringify(f) }} fields={[{ name: "name", label: t("name"), required: true, full: true }]} />

@@ -6,6 +6,7 @@ import { requireContext } from "@/lib/auth";
 import { audit, FinanceError, nextNumber } from "@/lib/finance";
 import { num, optStr, str } from "@/lib/format";
 import { act } from "./util";
+import { normalizeDateInput, parseCaseOpeningDate } from "@/lib/jalali";
 import { formFile, readDocumentUpload, readLogoUpload } from "@/lib/upload";
 
 /* ---------------- Customers ---------------- */
@@ -17,6 +18,9 @@ export async function saveCustomer(fd: FormData) {
     const logoBytes = await readLogoUpload(logoFile);
     const data = {
       name: str(fd.get("name")),
+      englishName: optStr(fd.get("englishName")),
+      tradeName: optStr(fd.get("tradeName")),
+      tradeNameEn: optStr(fd.get("tradeNameEn")),
       fatherName: optStr(fd.get("fatherName")),
       phone: optStr(fd.get("phone")),
       email: optStr(fd.get("email")),
@@ -29,6 +33,9 @@ export async function saveCustomer(fd: FormData) {
       province: optStr(fd.get("province")),
       district: optStr(fd.get("district")),
       area: optStr(fd.get("area")),
+      market: optStr(fd.get("market")),
+      floor: optStr(fd.get("floor")),
+      shopNumber: optStr(fd.get("shopNumber")),
       notes: optStr(fd.get("notes")),
       status: str(fd.get("status")) || "active",
     };
@@ -140,28 +147,15 @@ export async function saveCase(fd: FormData) {
     const customerId = str(fd.get("customerId"));
     const serviceId = optStr(fd.get("serviceId"));
     const responsibleEmployeeId = optStr(fd.get("responsibleEmployeeId"));
-    const openedAt = str(fd.get("openedAt")) || new Date().toISOString().slice(0, 10);
+    const rawOpenedAt = normalizeDateInput(fd.get("openedAt"));
+    const openedAt = parseCaseOpeningDate(rawOpenedAt);
     const priorityValue = str(fd.get("priority"));
     const priority = ["normal", "high", "urgent"].includes(priorityValue)
       ? priorityValue
       : "normal";
 
-    const isValidIsoDate = (value: string) => {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-      const [year, month, day] = value.split("-").map(Number);
-      const date = new Date(Date.UTC(year, month - 1, day));
-      return (
-        Number.isInteger(year) &&
-        Number.isInteger(month) &&
-        Number.isInteger(day) &&
-        date.getUTCFullYear() === year &&
-        date.getUTCMonth() === month - 1 &&
-        date.getUTCDate() === day
-      );
-    };
-
     if (!customerId) throw new FinanceError("customer_not_found");
-    if (!isValidIsoDate(openedAt)) throw new FinanceError("invalid_case_date");
+    if (!openedAt) throw new FinanceError("invalid_case_date");
 
     const rawFee = str(fd.get("serviceFee"));
     const rawDiscount = str(fd.get("discountAmount"));

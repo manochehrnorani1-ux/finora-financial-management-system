@@ -9,7 +9,7 @@ import { PrintButton } from "@/components/forms";
 import { GeneratedFormFiller, type FillerField } from "@/components/GeneratedFormFiller";
 import { formatDateTime } from "@/lib/jalali";
 import { CustomerLogo, FinoraLogo } from "@/components/BrandLogos";
-import { getZipFormDefinition } from "@/lib/zip-form-definitions";
+import { getZipFormDefinition, mergeZipFields } from "@/lib/zip-form-definitions";
 
 export default async function GeneratedFormPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,7 +22,7 @@ export default async function GeneratedFormPage({ params }: { params: Promise<{ 
     .where(and(eq(generatedForms.id, id), eq(generatedForms.organizationId, ctx.org.id)));
   if (!row) notFound();
   const values = row.g.valuesSnapshot as Record<string, unknown>;
-  const rawFields = (row.f?.fields ?? []) as { key: string; label: string; labelPs?: string | null; labelEn?: string | null; type?: string; required?: boolean; options?: string[] | null; help?: string | null }[];
+  const rawFields = mergeZipFields(row.f?.formKey ?? "", (row.f?.fields ?? []) as never) as { key: string; label: string; labelPs?: string | null; labelEn?: string | null; type?: string; required?: boolean; options?: string[] | null; help?: string | null; mapping?: string | null }[];
   const map = row.g.mappingSnapshot as Record<string, string>;
   const official = row.g.documentType !== "FINORA_INTERNAL_FORM";
   const canWrite = ctx.can("official_forms.write");
@@ -57,6 +57,7 @@ export default async function GeneratedFormPage({ params }: { params: Promise<{ 
         actions={<>
           <Link href="/official-forms" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm print:hidden">← {t("back")}</Link>
           <PrintButton label={t("printForm")} audit={{ entityType: "generated_form", entityId: id }} />
+          <Link href={`/generated-forms/${id}/print`} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 print:hidden">نسخه چاپ مستقل</Link>
         </>}
       />
       <div className="mx-auto max-w-4xl space-y-4">
@@ -161,6 +162,20 @@ export default async function GeneratedFormPage({ params }: { params: Promise<{ 
               <caption className="mb-1 text-start font-bold">فهرست نمایندگی‌ها</caption>
               <thead><tr><th className="border p-1">شماره</th><th className="border p-1">نماینده</th><th className="border p-1">ولایت</th><th className="border p-1">ولسوالی</th><th className="border p-1">ناحیه</th><th className="border p-1">مارکیت</th><th className="border p-1">دکان</th><th className="border p-1">تماس</th></tr></thead>
               <tbody>{zipBusiness.branches.map((b:any) => <tr key={b.id}><td className="border p-1">{b.branchNumber ?? "—"}</td><td className="border p-1">{b.name ?? "—"}</td><td className="border p-1">{b.province ?? "—"}</td><td className="border p-1">{b.district ?? "—"}</td><td className="border p-1">{b.area ?? "—"}</td><td className="border p-1">{b.market ?? "—"}</td><td className="border p-1">{b.shopNumber ?? "—"}</td><td className="border p-1">{b.phone ?? "—"}</td></tr>)}</tbody>
+            </table>
+          )}
+          {zipDef && Array.isArray(zipBusiness.employees) && zipBusiness.employees.length > 0 && (
+            <table className="mt-5 w-full border-collapse text-xs">
+              <caption className="mb-1 text-start font-bold">فهرست کارمندان</caption>
+              <thead><tr><th className="border p-1">نام</th><th className="border p-1">نام پدر</th><th className="border p-1">موقف</th><th className="border p-1">تذکره</th><th className="border p-1">TIN</th><th className="border p-1">شماره تماس</th></tr></thead>
+              <tbody>{zipBusiness.employees.map((e:any) => <tr key={e.id}><td className="border p-1">{e.fullName}</td><td className="border p-1">{e.fatherName ?? "—"}</td><td className="border p-1">{e.position ?? "—"}</td><td className="border p-1">{e.nationalId ?? "—"}</td><td className="border p-1">{e.tin ?? "—"}</td><td className="border p-1">{e.phone ?? "—"}</td></tr>)}</tbody>
+            </table>
+          )}
+          {zipDef && Array.isArray(zipBusiness.guarantees) && zipBusiness.guarantees.length > 0 && (
+            <table className="mt-5 w-full border-collapse text-xs">
+              <caption className="mb-1 text-start font-bold">فهرست تضمین‌کنندگان</caption>
+              <thead><tr><th className="border p-1">نام ضامن</th><th className="border p-1">ولد</th><th className="border p-1">تذکره</th><th className="border p-1">تماس</th><th className="border p-1">تشبث</th><th className="border p-1">جواز تشبث</th></tr></thead>
+              <tbody>{zipBusiness.guarantees.map((g:any) => <tr key={g.id}><td className="border p-1">{g.guarantorName}</td><td className="border p-1">{g.guarantorFatherName ?? "—"}</td><td className="border p-1">{g.guarantorNationalId ?? "—"}</td><td className="border p-1">{g.guarantorPhone ?? "—"}</td><td className="border p-1">{g.businessName ?? "—"}</td><td className="border p-1">{g.businessLicenseNumber ?? "—"}</td></tr>)}</tbody>
             </table>
           )}
           {zipDef && Array.isArray(zipBusiness.bankAccounts) && zipBusiness.bankAccounts.length > 0 && (

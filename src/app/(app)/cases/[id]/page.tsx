@@ -8,7 +8,7 @@ import { saveCase, transitionCase, addCaseNoteForm, uploadCaseFile, saveDocument
 import { receiveCaseFee } from "@/actions/finance";
 import { ActionButton, FormDialog, PrintButton, type Field } from "@/components/forms";
 import { Badge, Card, KV, Money, PageHeader, Stat, Table } from "@/components/ui";
-import { formatDate, formatDateTime } from "@/lib/jalali";
+import { formatCaseOpeningDate, formatDate, formatDateTime } from "@/lib/jalali";
 
 const STATUS_KEY: Record<string, string> = { new: "newCase", reviewing: "reviewing", missing_documents: "missingDocuments", in_progress: "inProgress", awaiting_review: "awaitingReview", awaiting_approval: "awaitingApproval", ready_for_delivery: "readyForDelivery", delivered: "delivered", closed: "closed", cancelled: "cancelled" };
 
@@ -126,7 +126,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       )}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card title={t("details")} className="lg:col-span-1">
-          <KV items={[[t("caseNumber"), c.caseNumber], [t("customer"), <Link key="c" href={`/customer-accounts/${c.customerId}`} className="text-emerald-700">{record.customer.name}</Link>], [t("service"), record.service?.name ?? "-"], [t("openingDate"), formatDate(c.openedAt, fmt)], [t("responsibleEmployee"), record.employee ?? "-"], [t("priority"), t(c.priority)], [t("caseFee"), <Money key="f" value={c.serviceFee} currency={c.feeCurrency} />], [t("discount"), <Money key="d" value={c.discountAmount} currency={c.feeCurrency} />], [t("feeStatus"), t(c.feeStatus)], [t("createdBy"), c.createdBy === ctx.user.id ? ctx.user.fullName : ""]]} />
+          <KV items={[[t("caseNumber"), c.caseNumber], [t("customer"), <Link key="c" href={`/customer-accounts/${c.customerId}`} className="text-emerald-700">{record.customer.name}</Link>], [t("service"), record.service?.name ?? "-"], [t("openingDate"), formatCaseOpeningDate(c.openedAt, fmt)], [t("responsibleEmployee"), record.employee ?? "-"], [t("priority"), t(c.priority)], [t("caseFee"), <Money key="f" value={c.serviceFee} currency={c.feeCurrency} />], [t("discount"), <Money key="d" value={c.discountAmount} currency={c.feeCurrency} />], [t("feeStatus"), t(c.feeStatus)], [t("createdBy"), c.createdBy === ctx.user.id ? ctx.user.fullName : ""]]} />
           {c.notes && <p className="mt-3 text-sm text-slate-600 whitespace-pre-wrap">{c.notes}</p>}
         </Card>
         <Card title={t("caseFee")} className="lg:col-span-2" actions={ctx.can("cases.write") && remaining > 0 && <FormDialog title={t("issueReceipt")} triggerLabel={`+ ${t("issueReceipt")}`} action={receiveCaseFee} hidden={{ caseId: c.id }} fields={[

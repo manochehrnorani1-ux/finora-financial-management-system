@@ -29,7 +29,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
           <select name="method" defaultValue={f.paymentMethod ?? ""} className="input !w-auto"><option value="">{t("paymentMethod")}: {t("all")}</option><option value="cash">{t("cash")}</option><option value="bank">{t("bank")}</option><option value="credit">{t("credit")}</option><option value="transfer">{t("transfer")}</option></select>
           <select name="currency" defaultValue={f.currency ?? ""} className="input !w-auto"><option value="">{t("currency")}: {t("all")}</option>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
           <button className="rounded-lg bg-slate-800 text-white px-3 py-2">{t("apply")}</button>
-          <a href={`/api/reports/export?type=transactions&format=csv&${new URLSearchParams(Object.fromEntries(Object.entries(f).filter(([, v]) => v)) as Record<string, string>)}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2">{t("exportCsv")}</a>
+          <a href={`/api/reports/export?type=transactions&format=csv&${new URLSearchParams(Object.fromEntries(Object.entries(f).filter(([, v]) => v)) as Record<string, string>)}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2">{t("exportCsv")}</a><a href={`/print/reports?type=transactions&${new URLSearchParams(Object.fromEntries(Object.entries(f).filter(([, v]) => v)) as Record<string, string>)}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2">چاپ / PDF</a>
         </form>
       } />
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">

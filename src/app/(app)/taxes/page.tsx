@@ -44,7 +44,7 @@ export default async function TaxesPage({ searchParams }: { searchParams: SP }) 
 
   return (
     <>
-      <PageHeader title={t("taxes")} subtitle="انواع مالیه، قواعد رسمی وزارت مالیه افغانستان و ریکاردهای مالیاتی ثبت‌شده" actions={<>
+      <PageHeader title={t("taxes")} subtitle="انواع مالیه، قواعد رسمی وزارت مالیه افغانستان و ریکاردهای مالیاتی ثبت‌شده" actions={<><a href={`/print/reports?type=tax&${new URLSearchParams(Object.fromEntries(Object.entries(f).filter(([, v]) => v)) as Record<string, string>)}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">چاپ / PDF</a>
         {canWrite && <FormDialog title={t("taxTypes")} triggerLabel={`+ ${t("taxType")}`} action={saveTaxType} fields={[{ name: "name", label: t("name"), required: true }, { name: "code", label: t("code"), required: true }, { name: "description", label: t("description"), type: "textarea" }]} />}
         <Link href="/tax-settlements" className="rounded-lg bg-emerald-800 text-white px-3 py-2 text-sm font-medium">{t("taxRules")} / {t("taxSettlement")}</Link>
       </>} />
