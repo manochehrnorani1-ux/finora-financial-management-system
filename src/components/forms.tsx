@@ -159,6 +159,7 @@ export interface Field {
   showIf?: { field: string; values: string[] };
   full?: boolean;
   readOnly?: boolean;
+  accept?: string;
 }
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; wide?: boolean }) {
@@ -266,7 +267,7 @@ export function FormDialog({
                 ) : f.type === "checkbox" ? (
                   <input type="checkbox" name={f.name} defaultChecked={f.defaultValue === true || f.defaultValue === "on"} className="h-5 w-5 accent-emerald-700" />
                 ) : f.type === "file" ? (
-                  <input type="file" name={f.name} required={f.required} className="input" />
+                  <input type="file" name={f.name} required={f.required} accept={f.accept} className="input" />
                 ) : (
                   <input
                     type={f.type ?? "text"}
