@@ -1,5 +1,19 @@
 // Additional translations used by tax settlement, compliance, public settings and casework.
 export const EXTENDED_MORE: Record<string, readonly [string, string, string]> = {
+  systemManagementHelp: ["تنها کاربران مجاز می‌توانند مدیریت سیستم را ببینند و وارد شوند.", "یوازې مجاز کاروونکي د سیسټم مدیریت لیدلی او کارولی شي.", "Only authorized users can view and access System Management."],
+  systemOrganizations: ["سازمان‌ها", "سازمانونه", "Organizations"],
+  usersRoles: ["کاربران و نقش‌ها", "کاروونکي او رولونه", "Users & Roles"],
+  systemOrgSettings: ["تنظیمات سازمان", "د سازمان تنظیمات", "Organization Settings"],
+  systemGeneralSettings: ["تنظیمات عمومی سیستم", "د سیسټم عمومي تنظیمات", "General System Settings"],
+  systemLanguage: ["زبان و ترجیحات", "ژبه او ترجیحات", "Language & Preferences"],
+  systemFiles: ["مدیریت فایل‌ها", "د فایلونو مدیریت", "File Management"],
+  systemSecurity: ["امنیت و وضعیت سیستم", "امنیت او د سیسټم وضعیت", "Security & System Status"],
+  accountSettings: ["تنظیمات حساب", "د حساب تنظیمات", "Account Settings"],
+  activeOrganization: ["سازمان فعال", "فعاله اداره", "Active organization"],
+  accessDenied: ["دسترسی مجاز نیست", "د لاسرسي اجازه نشته", "Access denied"],
+  accessDeniedHelp: ["شما اجازه دسترسی به این بخش را ندارید.", "تاسو دې برخې ته د لاسرسي اجازه نه لرئ.", "You do not have permission to access this section."],
+  backToDashboard: ["بازگشت به داشبورد", "ډشبورډ ته ستنېدل", "Back to dashboard"],
+
   conditions: ["شرایط تطبیق", "د پلي کېدو شرایط", "Application conditions"],
   rate: ["نرخ", "نرخ", "Rate"],
   verified: ["منبع بررسی‌شده", "سرچینه تایید شوې", "Source reviewed"],
