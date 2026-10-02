@@ -31,6 +31,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <Shell
       user={{ fullName: ctx.user.fullName, email: ctx.user.email }}
       org={{ id: ctx.org.id, name: ctx.org.name, isDemo: ctx.org.isDemo, currency: ctx.org.currency }}
+      roleKey={ctx.roleKey}
       roleLabel={ROLE_LABELS[ctx.roleKey][lang]}
       perms={[...ctx.perms]}
       memberships={ctx.memberships}
