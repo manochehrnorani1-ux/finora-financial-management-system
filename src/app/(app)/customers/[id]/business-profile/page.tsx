@@ -52,7 +52,7 @@ export default async function CustomerBusinessProfilePage({ params }: { params: 
   const shareholderFields: Field[] = [
     {name:"fullName",label:l.fullName,required:true},{name:"fatherName",label:l.father},{name:"grandfatherName",label:l.grandfather},
     {name:"nationalId",label:l.nationalId},{name:"tin",label:l.tin},{name:"phone",label:l.phone},{name:"email",label:l.email,type:"email"},
-    {name:"province",label:l.province},{name:"district",label:l.district},{name:"area",label:l.area},{name:"village",label:l.village},{name:"address",label:l.address,full:true},
+    {name:"province",label:l.province},{name:"district",label:l.district},{name:"area",label:l.area},{name:"address",label:l.address,full:true},
     {name:"educationLevel",label:l.education},{name:"educationField",label:l.field},{name:"workExperienceYears",label:l.experience,type:"number"},
     {name:"ownershipPercentage",label:l.ownership,type:"number"},{name:"shareValue",label:l.shareValue,type:"number"},{name:"role",label:l.role},
     {name:"notes",label:l.notes,type:"textarea",full:true}
@@ -60,7 +60,7 @@ export default async function CustomerBusinessProfilePage({ params }: { params: 
   const employeeFields: Field[] = [
     {name:"fullName",label:l.fullName,required:true},{name:"fatherName",label:l.father},{name:"grandfatherName",label:l.grandfather},
     {name:"nationalId",label:l.nationalId},{name:"tin",label:l.tin},{name:"phone",label:l.phone},{name:"email",label:l.email,type:"email"},
-    {name:"province",label:l.province},{name:"district",label:l.district},{name:"area",label:l.area},{name:"address",label:l.address,full:true},
+    {name:"province",label:l.province},{name:"district",label:l.district},{name:"area",label:l.area},{name:"village",label:l.village},{name:"address",label:l.address,full:true},
     {name:"educationLevel",label:l.education},{name:"educationField",label:l.field},{name:"workExperienceYears",label:l.experience,type:"number"},
     {name:"position",label:l.position},{name:"department",label:l.department},{name:"employmentDate",label:l.employment,type:"date"},{name:"salary",label:l.salary,type:"number"},
     {name:"notes",label:l.notes,type:"textarea",full:true}
