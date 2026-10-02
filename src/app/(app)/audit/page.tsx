@@ -6,6 +6,8 @@ import { auditReport } from "@/lib/reports";
 import { Card, PageHeader, Table } from "@/components/ui";
 import type { Metadata } from "next";
 import { formatDateTime } from "@/lib/jalali";
+import { canAccessSystemManagement } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "ثبت وقایع و فعالیت‌ها",
@@ -15,6 +17,7 @@ const ACTIONS = ["CREATE", "UPDATE", "DELETE", "AMEND", "SUBMIT", "REVIEW", "APP
 
 export default async function AuditPage({ searchParams }: { searchParams: SP }) {
   const { ctx, t, fmt } = await pageContext("audit.read");
+  if (!canAccessSystemManagement(ctx.roleKey, ctx.perms)) redirect("/forbidden");
   const q = await searchParams;
   const f = { from: sp1(q.from), to: sp1(q.to), userId: sp1(q.userId), status: sp1(q.action) };
   const [rows, users] = await Promise.all([
