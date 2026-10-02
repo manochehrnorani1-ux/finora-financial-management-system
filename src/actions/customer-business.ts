@@ -80,7 +80,7 @@ export async function saveCustomerShareholder(fd: FormData) {
       organizationId: ctx.org.id, customerId, fullName: str(fd.get("fullName")),
       fatherName: optStr(fd.get("fatherName")), grandfatherName: optStr(fd.get("grandfatherName")),
       nationalId: optStr(fd.get("nationalId")), tin: optStr(fd.get("tin")), phone: optStr(fd.get("phone")), email: optStr(fd.get("email")),
-      province: optStr(fd.get("province")), district: optStr(fd.get("district")), area: optStr(fd.get("area")), village: optStr(fd.get("village")), address: optStr(fd.get("address")),
+      province: optStr(fd.get("province")), district: optStr(fd.get("district")), area: optStr(fd.get("area")), address: optStr(fd.get("address")),
       educationLevel: optStr(fd.get("educationLevel")), educationField: optStr(fd.get("educationField")),
       workExperienceYears: optionalInt(fd.get("workExperienceYears")),
       ownershipPercentage: num(fd.get("ownershipPercentage")), shareValue: num(fd.get("shareValue")),
@@ -111,7 +111,7 @@ export async function saveCustomerEmployee(fd: FormData) {
       phone: optStr(fd.get("phone")), email: optStr(fd.get("email")), position: optStr(fd.get("position")), department: optStr(fd.get("department")),
       educationLevel: optStr(fd.get("educationLevel")), educationField: optStr(fd.get("educationField")),
       workExperienceYears: optionalInt(fd.get("workExperienceYears")), employmentDate: optStr(fd.get("employmentDate")), salary: num(fd.get("salary")),
-      province: optStr(fd.get("province")), district: optStr(fd.get("district")), area: optStr(fd.get("area")), address: optStr(fd.get("address")),
+      province: optStr(fd.get("province")), district: optStr(fd.get("district")), area: optStr(fd.get("area")), village: optStr(fd.get("village")), address: optStr(fd.get("address")),
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.fullName) throw new FinanceError("invalid_input");
