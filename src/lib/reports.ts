@@ -393,7 +393,7 @@ export async function dashboardData(orgId: string, from: string, to: string) {
     pendingApprovals:
       Number(pending.rows[0]?.pending_income ?? 0) +
       Number(pending.rows[0]?.pending_expense ?? 0) +
-      Number(pending[0]?.under_review_docs ?? 0) +
+      Number(pending.rows[0]?.under_review_docs ?? 0) +
       Number(pending.rows[0]?.awaiting_cases ?? 0),
     activeCases: Number(casesSummary[0]?.active ?? 0),
     completedCases: Number(casesSummary[0]?.completed ?? 0),
