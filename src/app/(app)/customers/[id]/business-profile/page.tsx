@@ -58,7 +58,7 @@ export default async function CustomerBusinessProfilePage({ params }: { params: 
     {name:"notes",label:l.notes,type:"textarea",full:true}
   ];
   const employeeFields: Field[] = [
-    {name:"fullName",label:l.fullName,required:true},{name:"fatherName",label:l.father},
+    {name:"fullName",label:l.fullName,required:true},{name:"fatherName",label:l.father},{name:"grandfatherName",label:l.grandfather},
     {name:"nationalId",label:l.nationalId},{name:"tin",label:l.tin},{name:"phone",label:l.phone},{name:"email",label:l.email,type:"email"},
     {name:"province",label:l.province},{name:"district",label:l.district},{name:"area",label:l.area},{name:"address",label:l.address,full:true},
     {name:"educationLevel",label:l.education},{name:"educationField",label:l.field},{name:"workExperienceYears",label:l.experience,type:"number"},
