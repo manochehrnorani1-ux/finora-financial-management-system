@@ -47,7 +47,7 @@ export default async function SettingsPage() {
             { name: "licenseNumber", label: t("licenseNumber"), defaultValue: org.licenseNumber },
             { name: "taxNumber", label: t("taxNumber"), defaultValue: org.taxNumber },
             { name: "address", label: t("address"), defaultValue: org.address, full: true },
-            { name: "logoUrl", label: t("logoUrl"), defaultValue: org.logoUrl, full: true },
+            { name: "logo", label: t("logoUrl"), type: "file", accept: "image/*", full: true, help: org.logoUrl ? "برای تغییر لوگو، تصویر جدید انتخاب کنید." : "PNG، JPG یا SVG؛ حداکثر ۲ مگابایت." },
             { name: "fiscalYearStartMonth", label: t("fiscalYearStart"), type: "select", required: true, defaultValue: String(org.fiscalYearStartMonth), options: months.map((m, i) => ({ value: String(i + 1), label: m })) },
             { name: "dateFormat", label: t("dateFormat"), type: "select", required: true, defaultValue: org.dateFormat, options: [{ value: "jalali", label: t("jalali") }, { value: "gregorian", label: t("gregorian") }] },
           ]} />
