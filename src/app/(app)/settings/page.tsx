@@ -38,6 +38,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader title={t("settings")} subtitle={`${org.name} · ${ROLE_LABELS[ctx.roleKey][lang]}`} />
       <div className="grid lg:grid-cols-2 gap-4">
+        <span id="organization" className="block scroll-mt-24" />
         <Card title={t("orgProfile")} actions={canManage && (
           <FormDialog title={t("orgProfile")} triggerLabel={t("edit")} triggerSize="sm" triggerVariant="secondary" action={saveOrganizationSettings} wide fields={[
             { name: "name", label: t("organizationName"), required: true, defaultValue: org.name },
@@ -63,6 +64,7 @@ export default async function SettingsPage() {
             </div>
           </div>
         </Card>
+        <span id="general" className="block scroll-mt-24" />
         <Card title={t("approvalSettings")} actions={canManage && (
           <FormDialog title={t("approvalSettings")} triggerLabel={t("edit")} triggerSize="sm" triggerVariant="secondary" action={saveApprovalSettings} fields={[
             { name: "incomeThreshold", label: `${t("incomeThreshold")} (${org.currency})`, type: "number", required: true, defaultValue: approval.incomeThreshold },
@@ -106,6 +108,8 @@ export default async function SettingsPage() {
             <p className="mt-3 text-xs leading-6 text-amber-800">{t("publicRequests")} — {t("no")} · {t("onlinePayments")} — {t("no")}. {t("notGovernment")}</p>
           </Card>
         )}
+        <span id="preferences" className="block scroll-mt-24" />
+        <span id="security" className="block scroll-mt-24" />
         <Card title={t("security")}>
           <FormDialog title={t("newPassword")} triggerLabel={t("newPassword")} triggerVariant="secondary" action={changePasswordAction} fields={[{ name: "current", label: t("password"), type: "password", required: true }, { name: "password", label: t("newPassword"), type: "password", required: true }]} />
           <p className="mt-3 text-xs text-slate-500">{t("systemRoles")}: {Object.values(ROLE_LABELS).map((r) => r[lang]).join(" · ")}</p>
