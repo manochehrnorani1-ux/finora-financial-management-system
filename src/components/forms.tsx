@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import { recordPrintAction } from "@/actions/audit";
 import { ERROR_MESSAGES } from "@/lib/errors";
-import { JALALI_MONTHS, jalaliMonthLength, toGregorian, toJalali, todayIso } from "@/lib/jalali";
+import { JALALI_MONTHS, jalaliMonthLength, parseCaseOpeningDate, toGregorian, toJalali, todayIso, validateCaseOpeningDate } from "@/lib/jalali";
 import type { ActionResult } from "@/actions/util";
 
 /* ---------------- Toast ---------------- */
@@ -108,14 +108,9 @@ export function ActionButton({
 export function DateInput({ name, defaultValue, required, className = "" }: { name: string; defaultValue?: string | null; required?: boolean; className?: string }) {
   const { lang, dateFormat, t } = useI18n();
   const fallback = todayIso();
-  const candidate = String(defaultValue ?? "").replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))) || (required ? fallback : "");
-  const isValidIsoDate = (value: string) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const [year, month, day] = value.split("-").map(Number);
-    if (year < 1 || month < 1 || month > 12 || day < 1) return false;
-    return day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
-  };
-  const init = candidate === "" ? "" : (isValidIsoDate(candidate) ? candidate : fallback);
+  const candidate = String(defaultValue ?? "").trim() || (required ? fallback : "");
+  const parsed = candidate === "" ? null : parseCaseOpeningDate(candidate);
+  const init = candidate === "" ? "" : (parsed && validateCaseOpeningDate(candidate) ? parsed : fallback);
   const base = init || fallback;
   const g = base.split("-").map((x) => parseInt(x, 10));
   const j0 = toJalali(g[0], g[1], g[2]);
@@ -130,9 +125,7 @@ export function DateInput({ name, defaultValue, required, className = "" }: { na
   const dd = Math.min(jd, dmax);
   const gg = toGregorian(jy, jm, dd);
   const iso = `${gg.gy}-${String(gg.gm).padStart(2, "0")}-${String(gg.gd).padStart(2, "0")}`;
-  const isoDate = new Date(iso + "T00:00:00");
-  const validIso = /^\d{4}-\d{2}-\d{2}$/.test(iso) && !Number.isNaN(isoDate.getTime()) &&
-    isoDate.getFullYear() === gg.gy && isoDate.getMonth() + 1 === gg.gm && isoDate.getDate() === gg.gd;
+  const validIso = validateCaseOpeningDate(iso) && parseCaseOpeningDate(iso) === iso;
   const years = Array.from({ length: 21 }, (_, i) => j0.jy - 10 + i);
   const months = JALALI_MONTHS[lang];
   return (
