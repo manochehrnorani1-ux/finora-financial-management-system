@@ -1,7 +1,7 @@
 "use server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { backups, exchangeRates, organizationMembers, organizations, profiles, publicSites, reports, roles } from "@/db/schema";
+import { attachments, backups, exchangeRates, organizationMembers, organizations, profiles, publicSites, reports, roles } from "@/db/schema";
 import { requireContext } from "@/lib/auth";
 import { hashPassword } from "@/lib/auth";
 import { audit, DEFAULT_APPROVAL, DEFAULT_NUMBERING, FinanceError, getSetting, setSetting } from "@/lib/finance";
