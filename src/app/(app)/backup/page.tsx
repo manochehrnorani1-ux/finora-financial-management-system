@@ -7,6 +7,8 @@ import { Card, PageHeader, Table } from "@/components/ui";
 import { ActionButton, FormDialog } from "@/components/forms";
 import type { Metadata } from "next";
 import { formatDateTime } from "@/lib/jalali";
+import { canAccessSystemManagement } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "پشتیبان‌گیری و بازیابی اطلاعات",
@@ -14,6 +16,7 @@ export const metadata: Metadata = {
 
 export default async function BackupPage() {
   const { ctx, t, fmt } = await pageContext("backup.manage");
+  if (!canAccessSystemManagement(ctx.roleKey, ctx.perms)) redirect("/forbidden");
   const rows = await db.select({ b: { id: backups.id, fileName: backups.fileName, sizeBytes: backups.sizeBytes, tableCounts: backups.tableCounts, createdAt: backups.createdAt }, user: profiles.fullName }).from(backups).leftJoin(profiles, eq(backups.createdBy, profiles.id)).where(eq(backups.organizationId, ctx.org.id)).orderBy(desc(backups.createdAt));
   return (
     <>
