@@ -108,8 +108,14 @@ export function ActionButton({
 export function DateInput({ name, defaultValue, required, className = "" }: { name: string; defaultValue?: string | null; required?: boolean; className?: string }) {
   const { lang, dateFormat, t } = useI18n();
   const fallback = todayIso();
-  const candidate = defaultValue || (required ? fallback : "");
-  const init = candidate === "" ? "" : (/^\d{4}-\d{2}-\d{2}$/.test(candidate) && !Number.isNaN(Date.parse(candidate + "T00:00:00")) ? candidate : fallback);
+  const candidate = String(defaultValue ?? "").replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))) || (required ? fallback : "");
+  const isValidIsoDate = (value: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split("-").map(Number);
+    if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+    return day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
+  };
+  const init = candidate === "" ? "" : (isValidIsoDate(candidate) ? candidate : fallback);
   const base = init || fallback;
   const g = base.split("-").map((x) => parseInt(x, 10));
   const j0 = toJalali(g[0], g[1], g[2]);
