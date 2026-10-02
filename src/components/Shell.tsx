@@ -68,12 +68,13 @@ export function Shell({
   const canSee = (item: MenuItem) => item.perms.some((p) => allowed.has(p));
   const visibleItems = PRIMARY_MENU.filter(canSee).filter((item) => !searching || t(item.key).toLowerCase().includes(query.trim().toLowerCase()));
   const visibleSystemItems = SYSTEM_MENU.filter(canSee).filter((item) => !searching || t(item.key).toLowerCase().includes(query.trim().toLowerCase()));
-  const canManageSystem = canAccessSystemManagement(
-    roleLabel === t("admin") ? "admin" : (["users.manage", "audit.read", "backup.manage", "settings.manage"].every((p) => allowed.has(p)) ? "manager" : "viewer"),
-    perms,
-  );
+  const canManageSystem = canAccessSystemManagement(roleKey, perms);
   const badgeValue = (b?: keyof NavCounts) => (b ? navCounts[b] ?? 0 : 0);
-  const isActive = (item: MenuItem) => {\n    const base = item.href.split("#")[0];\n    if (item.href.includes("#")) return base === "/admin-center" && pathname === base;\n    return pathname === base || pathname.startsWith(base + "/") || Boolean(item.routes?.some((r) => pathname === r || pathname.startsWith(r + "/")));\n  };
+  const isActive = (item: MenuItem) => {
+    const base = item.href.split("#")[0];
+    if (item.href.includes("#")) return base === "/admin-center" && pathname === base;
+    return pathname === base || pathname.startsWith(base + "/") || Boolean(item.routes?.some((r) => pathname === r || pathname.startsWith(r + "/")));
+  };
   const navigate = () => setOpen(false);
 
   const renderItem = (item: MenuItem) => {
