@@ -73,7 +73,7 @@ export function Shell({
     perms,
   );
   const badgeValue = (b?: keyof NavCounts) => (b ? navCounts[b] ?? 0 : 0);
-  const isActive = (item: MenuItem) => pathname === item.href.split("#")[0] || pathname.startsWith(item.href.split("#")[0] + "/") || Boolean(item.routes?.some((r) => pathname === r || pathname.startsWith(r + "/")));
+  const isActive = (item: MenuItem) => {\n    const base = item.href.split("#")[0];\n    if (item.href.includes("#")) return base === "/admin-center" && pathname === base;\n    return pathname === base || pathname.startsWith(base + "/") || Boolean(item.routes?.some((r) => pathname === r || pathname.startsWith(r + "/")));\n  };
   const navigate = () => setOpen(false);
 
   const renderItem = (item: MenuItem) => {
