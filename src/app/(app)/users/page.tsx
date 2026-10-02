@@ -52,6 +52,7 @@ export default async function UsersPage() {
             </div>,
           ])} />
       </Card>
+      <span id="roles" className="block scroll-mt-24" />
       <Card title={t("permissionsMatrix")}>
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full text-xs min-w-[700px]">
