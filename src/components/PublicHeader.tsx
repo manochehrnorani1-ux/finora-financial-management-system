@@ -7,7 +7,7 @@ import { LANGS } from "@/lib/i18n/dictionary";
 import { setLanguageAction } from "@/actions/auth";
 import { FinoraLogo } from "./BrandLogos";
 
-export function PublicHeader({ organizationName, phone }: { organizationName: string; phone: string }) {
+export function PublicHeader({ organizationName, phone, logoUrl }: { organizationName: string; phone: string; logoUrl?: string | null }) {
   const { t, lang } = useI18n();
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -22,7 +22,7 @@ export function PublicHeader({ organizationName, phone }: { organizationName: st
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl print:hidden">
       <div className="mx-auto flex h-[76px] max-w-7xl items-center gap-3 px-4 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="FINORA">
-          <FinoraLogo height={42} />
+          {logoUrl ? <img src={logoUrl} alt={organizationName} className="h-11 w-11 rounded-xl border border-slate-200 bg-white object-contain p-1" /> : <FinoraLogo height={42} />}
           <div className="min-w-0">
             <div className="text-lg font-black tracking-wide text-emerald-950">FINORA</div>
             <div className="max-w-44 truncate text-[10px] text-slate-500">{t("slogan")}</div>
