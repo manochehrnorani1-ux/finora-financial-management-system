@@ -23,7 +23,7 @@ function optionalInt(v: FormDataEntryValue | null) {
 }
 
 async function requireCustomer(customerId: string, organizationId: string) {
-  const [customer] = await tx
+  const [customer] = await db
     .select({ id: customers.id })
     .from(customers)
     .where(and(eq(customers.id, customerId), eq(customers.organizationId, organizationId)));
@@ -115,7 +115,7 @@ export async function saveCustomerEmployee(fd: FormData) {
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.fullName) throw new FinanceError("invalid_input");
-    await requireCustomer(db, customerId, ctx.org.id);
+    await requireCustomer(customerId, ctx.org.id);
     if (id) {
       const [old] = await db.select().from(customerEmployees).where(and(eq(customerEmployees.id, id), eq(customerEmployees.organizationId, ctx.org.id), eq(customerEmployees.customerId, customerId)));
       if (!old) throw new FinanceError("not_found");
