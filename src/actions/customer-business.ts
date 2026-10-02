@@ -22,6 +22,15 @@ function optionalInt(v: FormDataEntryValue | null) {
   return s ? Number.parseInt(s, 10) : null;
 }
 
+async function requireCustomer(tx: typeof db, customerId: string, organizationId: string) {
+  const [customer] = await tx
+    .select({ id: customers.id })
+    .from(customers)
+    .where(and(eq(customers.id, customerId), eq(customers.organizationId, organizationId)));
+  if (!customer) throw new FinanceError("not_found");
+  return customer;
+}
+
 export async function saveCustomerLicense(fd: FormData) {
   return act(async () => {
     const ctx = await requireContext("customers.write");
@@ -78,6 +87,7 @@ export async function saveCustomerShareholder(fd: FormData) {
       role: optStr(fd.get("role")), status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.fullName) throw new FinanceError("invalid_input");
+    await requireCustomer(db, customerId, ctx.org.id);
     if (id) {
       const [old] = await db.select().from(customerShareholders).where(and(eq(customerShareholders.id, id), eq(customerShareholders.organizationId, ctx.org.id), eq(customerShareholders.customerId, customerId)));
       if (!old) throw new FinanceError("not_found");
@@ -97,7 +107,7 @@ export async function saveCustomerEmployee(fd: FormData) {
     const customerId = str(fd.get("customerId"));
     const data = {
       organizationId: ctx.org.id, customerId, fullName: str(fd.get("fullName")),
-      fatherName: optStr(fd.get("fatherName")), nationalId: optStr(fd.get("nationalId")), tin: optStr(fd.get("tin")),
+      fatherName: optStr(fd.get("fatherName")), grandfatherName: optStr(fd.get("grandfatherName")), nationalId: optStr(fd.get("nationalId")), tin: optStr(fd.get("tin")),
       phone: optStr(fd.get("phone")), email: optStr(fd.get("email")), position: optStr(fd.get("position")), department: optStr(fd.get("department")),
       educationLevel: optStr(fd.get("educationLevel")), educationField: optStr(fd.get("educationField")),
       workExperienceYears: optionalInt(fd.get("workExperienceYears")), employmentDate: optStr(fd.get("employmentDate")), salary: num(fd.get("salary")),
@@ -105,6 +115,7 @@ export async function saveCustomerEmployee(fd: FormData) {
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.fullName) throw new FinanceError("invalid_input");
+    await requireCustomer(db, customerId, ctx.org.id);
     if (id) {
       const [old] = await db.select().from(customerEmployees).where(and(eq(customerEmployees.id, id), eq(customerEmployees.organizationId, ctx.org.id), eq(customerEmployees.customerId, customerId)));
       if (!old) throw new FinanceError("not_found");
@@ -129,6 +140,15 @@ export async function saveCustomerBranch(fd: FormData) {
       licenseNumber: optStr(fd.get("licenseNumber")), issueDate: optStr(fd.get("issueDate")), expiryDate: optStr(fd.get("expiryDate")),
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
+    await requireCustomer(db, customerId, ctx.org.id);
+    if (data.representativeEmployeeId) {
+      const [employee] = await db.select({ id: customerEmployees.id }).from(customerEmployees).where(and(
+        eq(customerEmployees.id, data.representativeEmployeeId),
+        eq(customerEmployees.organizationId, ctx.org.id),
+        eq(customerEmployees.customerId, customerId),
+      ));
+      if (!employee) throw new FinanceError("not_found");
+    }
     if (id) { await db.update(customerBranches).set(data).where(and(eq(customerBranches.id,id),eq(customerBranches.organizationId,ctx.org.id),eq(customerBranches.customerId,customerId))); return {id}; }
     const [row] = await db.insert(customerBranches).values(data).returning(); return {id:row.id};
   });
@@ -144,6 +164,7 @@ export async function saveCustomerBankAccount(fd: FormData) {
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.bankName || !data.accountName || !data.accountNumber) throw new FinanceError("invalid_input");
+    await requireCustomer(db, customerId, ctx.org.id);
     if (id) { await db.update(customerBankAccounts).set(data).where(and(eq(customerBankAccounts.id,id),eq(customerBankAccounts.organizationId,ctx.org.id),eq(customerBankAccounts.customerId,customerId))); return {id}; }
     const [row] = await db.insert(customerBankAccounts).values(data).returning(); return {id:row.id};
   });
@@ -164,6 +185,15 @@ export async function saveCustomerGuarantee(fd: FormData) {
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.guarantorName) throw new FinanceError("invalid_input");
+    await requireCustomer(db, customerId, ctx.org.id);
+    if (data.beneficiaryShareholderId) {
+      const [shareholder] = await db.select({ id: customerShareholders.id }).from(customerShareholders).where(and(
+        eq(customerShareholders.id, data.beneficiaryShareholderId),
+        eq(customerShareholders.organizationId, ctx.org.id),
+        eq(customerShareholders.customerId, customerId),
+      ));
+      if (!shareholder) throw new FinanceError("not_found");
+    }
     if (id) { await db.update(customerGuarantees).set(data).where(and(eq(customerGuarantees.id,id),eq(customerGuarantees.organizationId,ctx.org.id),eq(customerGuarantees.customerId,customerId))); return {id}; }
     const [row] = await db.insert(customerGuarantees).values(data).returning(); return {id:row.id};
   });
