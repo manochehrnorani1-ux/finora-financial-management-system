@@ -8,6 +8,7 @@ export const EXTENDED_MORE: Record<string, readonly [string, string, string]> = 
   systemLanguage: ["زبان و ترجیحات", "ژبه او ترجیحات", "Language & Preferences"],
   systemFiles: ["مدیریت فایل‌ها", "د فایلونو مدیریت", "File Management"],
   systemSecurity: ["امنیت و وضعیت سیستم", "امنیت او د سیسټم وضعیت", "Security & System Status"],
+  openMenu: ["بازکردن منو", "مینو خلاصول", "Open menu"],
   accountSettings: ["تنظیمات حساب", "د حساب تنظیمات", "Account Settings"],
   activeOrganization: ["سازمان فعال", "فعاله اداره", "Active organization"],
   accessDenied: ["دسترسی مجاز نیست", "د لاسرسي اجازه نشته", "Access denied"],
