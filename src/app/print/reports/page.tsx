@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { db } from "@/db";
+import { audit } from "@/lib/finance";
 import type { ReactNode } from "react";
 import { pageContext, sp1, type SP } from "@/lib/page";
 import {
@@ -82,6 +84,7 @@ export default async function ReportPrintPage({ searchParams }: { searchParams: 
   const cur = ctx.org.currency;
   const reportNumber = sp1(q.reportNo) || `FINORA-${type.toUpperCase()}-${new Date().toISOString().slice(0, 10)}`;
   const period = from && to ? `${formatDate(from, fmt)} — ${formatDate(to, fmt)}` : "—";
+  await audit(db, { orgId: ctx.org.id, userId: ctx.user.id, action: "PRINT", entityType: "report", newData: { type, reportNumber, filters: f } });
 
   let summary: ReactNode = null;
   let body: ReactNode;
