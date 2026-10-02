@@ -164,7 +164,7 @@ export async function saveCustomerBankAccount(fd: FormData) {
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.bankName || !data.accountName || !data.accountNumber) throw new FinanceError("invalid_input");
-    await requireCustomer(db, customerId, ctx.org.id);
+    await requireCustomer(customerId, ctx.org.id);
     if (id) { await db.update(customerBankAccounts).set(data).where(and(eq(customerBankAccounts.id,id),eq(customerBankAccounts.organizationId,ctx.org.id),eq(customerBankAccounts.customerId,customerId))); return {id}; }
     const [row] = await db.insert(customerBankAccounts).values(data).returning(); return {id:row.id};
   });
@@ -185,7 +185,7 @@ export async function saveCustomerGuarantee(fd: FormData) {
       status: str(fd.get("status")) || "active", notes: optStr(fd.get("notes")), createdBy: ctx.user.id, updatedAt: new Date(),
     };
     if (!data.guarantorName) throw new FinanceError("invalid_input");
-    await requireCustomer(db, customerId, ctx.org.id);
+    await requireCustomer(customerId, ctx.org.id);
     if (data.beneficiaryShareholderId) {
       const [shareholder] = await db.select({ id: customerShareholders.id }).from(customerShareholders).where(and(
         eq(customerShareholders.id, data.beneficiaryShareholderId),
