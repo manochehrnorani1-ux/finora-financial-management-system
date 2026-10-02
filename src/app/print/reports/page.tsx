@@ -83,8 +83,8 @@ export default async function ReportPrintPage({ searchParams }: { searchParams: 
   const reportNumber = sp1(q.reportNo) || `FINORA-${type.toUpperCase()}-${new Date().toISOString().slice(0, 10)}`;
   const period = from && to ? `${formatDate(from, fmt)} — ${formatDate(to, fmt)}` : "—";
 
-  let summary: React.ReactNode = null;
-  let body: React.ReactNode;
+  let summary: ReactNode = null;
+  let body: ReactNode;
 
   if (["daily","monthly","quarterly","annual"].includes(type)) {
     const [d, pl, inc, exp] = await Promise.all([
