@@ -387,21 +387,21 @@ export async function dashboardData(orgId: string, from: string, to: string) {
     netProfit: round2(Number(profit[0]?.income ?? 0) - Number(profit[0]?.expense ?? 0)),
     cashBalance: round2(Number(cash[0]?.balance ?? 0)),
     bankBalance: round2(Number(bank[0]?.balance ?? 0)),
-    receivables: round2(Number(receivables[0]?.receivables ?? 0)),
+    receivables: round2(Number(receivables.rows[0]?.receivables ?? 0)),
     taxes: round2(Number(tax[0]?.total ?? 0)),
-    pendingDocs: Number(pending[0]?.pending_docs ?? 0) + Number(pending[0]?.under_review_docs ?? 0),
+    pendingDocs: Number(pending.rows[0]?.pending_docs ?? 0) + Number(pending.rows[0]?.under_review_docs ?? 0),
     pendingApprovals:
-      Number(pending[0]?.pending_income ?? 0) +
-      Number(pending[0]?.pending_expense ?? 0) +
+      Number(pending.rows[0]?.pending_income ?? 0) +
+      Number(pending.rows[0]?.pending_expense ?? 0) +
       Number(pending[0]?.under_review_docs ?? 0) +
-      Number(pending[0]?.awaiting_cases ?? 0),
+      Number(pending.rows[0]?.awaiting_cases ?? 0),
     activeCases: Number(casesSummary[0]?.active ?? 0),
     completedCases: Number(casesSummary[0]?.completed ?? 0),
     missingCaseDocs: Number(casesSummary[0]?.missingDocs ?? 0),
     serviceFeeTotal: round2(feeTotal),
     serviceFeePaid: round2(feePaidValue),
     serviceFeeRemaining: round2(Math.max(0, feeTotal - feePaidValue)),
-    taxNeedsReview: Number(pending[0]?.tax_review ?? 0),
+    taxNeedsReview: Number(pending.rows[0]?.tax_review ?? 0),
     recentTx,
     recentDocs,
     byCategory: categoryTotals,
