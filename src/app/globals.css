@@ -142,3 +142,172 @@ select.input {
 
 @page landscape { size: A4 landscape; margin: 8mm 10mm; }
 @media print { .print-landscape { page: landscape; } }
+
+
+/* ---------------- Enterprise report printing ---------------- */
+.finora-print {
+  box-sizing: border-box;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 8mm 10mm 16mm;
+  background: #fff;
+  color: #111827;
+  font-family: "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+}
+.finora-print-landscape { max-width: 297mm; }
+.finora-print-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.finora-print-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 7px 12px;
+  background: #fff;
+  color: #334155;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+.finora-print-primary { background: #047857; color: #fff; border-color: #047857; }
+.finora-print-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10mm;
+  align-items: flex-start;
+  border-bottom: 1.5px solid #111827;
+  padding-bottom: 4mm;
+  margin-bottom: 4mm;
+}
+.finora-print-brand { display: flex; align-items: flex-start; gap: 4mm; min-width: 0; }
+.finora-print-logo,
+.finora-print-logo-placeholder {
+  width: 24mm;
+  height: 24mm;
+  flex: 0 0 24mm;
+  object-fit: contain;
+}
+.finora-print-logo-placeholder { border: 1px solid #e5e7eb; background: #fafafa; }
+.finora-print-state { font-size: 9pt; font-weight: 700; }
+.finora-print-company { margin-top: 1mm; font-size: 15pt; font-weight: 900; }
+.finora-print-subtitle { margin-top: 1.5mm; font-size: 12pt; font-weight: 800; }
+.finora-print-company-meta { max-width: 65mm; text-align: end; font-size: 8.5pt; color: #374151; line-height: 1.8; overflow-wrap: anywhere; }
+.finora-print-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid #9ca3af;
+  border-inline-start: 1px solid #9ca3af;
+  margin-bottom: 5mm;
+}
+.finora-print-meta-grid > div {
+  min-height: 12mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1mm;
+  padding: 2mm;
+  border-inline-end: 1px solid #9ca3af;
+  border-bottom: 1px solid #9ca3af;
+}
+.finora-print-meta-grid span { font-size: 7.5pt; color: #6b7280; }
+.finora-print-meta-grid strong { font-size: 8.5pt; overflow-wrap: anywhere; }
+.finora-print-summary { margin-bottom: 5mm; }
+.finora-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2mm;
+}
+.finora-summary-grid > div {
+  border: 1px solid #9ca3af;
+  padding: 2.5mm;
+  min-height: 15mm;
+}
+.finora-summary-grid span { display: block; color: #4b5563; font-size: 7.5pt; }
+.finora-summary-grid strong { display: block; margin-top: 1mm; font-size: 10pt; font-weight: 800; }
+.finora-print-section-title {
+  margin: 5mm 0 2mm;
+  padding: 1.5mm 2mm;
+  border: 1px solid #6b7280;
+  background: #f3f4f6;
+  font-size: 10pt;
+  font-weight: 800;
+}
+.finora-print-table-wrap { width: 100%; overflow: visible; }
+.finora-print-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 8pt;
+}
+.finora-print-table th,
+.finora-print-table td {
+  border: 1px solid #6b7280;
+  padding: 1.5mm 1.2mm;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.finora-print-table thead { display: table-header-group; }
+.finora-print-table th { background: #f3f4f6; font-weight: 800; }
+.finora-print-table tr { break-inside: avoid; page-break-inside: avoid; }
+.finora-print-table tfoot td { background: #f3f4f6; font-weight: 800; }
+.finora-empty { text-align: center; color: #6b7280; padding: 8mm !important; }
+.finora-number { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.finora-print-signatures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12mm;
+  margin-top: 12mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.finora-print-signatures > div { min-height: 18mm; text-align: center; }
+.finora-print-signatures span { display: block; margin-bottom: 7mm; font-size: 8pt; color: #4b5563; }
+.finora-print-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4mm;
+  margin-top: 8mm;
+  padding-top: 2mm;
+  border-top: 1px solid #9ca3af;
+  color: #4b5563;
+  font-size: 7.5pt;
+}
+.finora-print-footer > :nth-child(2) { text-align: center; }
+.finora-print-footer > :nth-child(3) { text-align: end; }
+.finora-page-number::after { content: "صفحه " counter(page) " از " counter(pages); }
+
+@media print {
+  @page { size: A4 portrait; margin: 8mm 10mm 12mm; }
+  @page landscape-report { size: A4 landscape; margin: 7mm 8mm 10mm; }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  body { font-size: 9.5pt; }
+  .finora-print {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .finora-print-landscape { page: landscape-report; }
+  .finora-print-header,
+  .finora-print-meta-grid,
+  .finora-print-summary,
+  .finora-print-signatures { break-inside: avoid; page-break-inside: avoid; }
+  .finora-print-table-wrap { break-inside: auto; page-break-inside: auto; }
+  .finora-print-table tr { break-inside: avoid; page-break-inside: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+@media print and (max-width: 210mm) {
+  .finora-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
