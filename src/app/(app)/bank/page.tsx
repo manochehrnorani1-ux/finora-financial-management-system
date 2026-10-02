@@ -35,7 +35,7 @@ export default async function BankPage({ searchParams }: { searchParams: SP }) {
   const typeLabel = (x: string) => ({ income: t("income"), expense: t("expenses"), customer_payment: t("receivePayment"), deposit: t("deposit"), withdrawal: t("withdrawal"), bank_fee: t("bankFee"), transfer: t("transfer") })[x] ?? x;
   return (
     <>
-      <PageHeader title={t("bank")} subtitle={t("bankReport")} actions={canWrite && <>
+      <PageHeader title={t("bank")} subtitle={t("bankReport")} actions={<><a href={`/print/reports?type=bank&${new URLSearchParams(Object.fromEntries(Object.entries(f).filter(([, v]) => v)) as Record<string, string>)}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">چاپ / PDF</a>{canWrite && <>
         <FormDialog title={t("deposit")} triggerLabel={`+ ${t("deposit")}`} action={bankOperationAction} fields={opFields("deposit")} />
         <FormDialog title={t("withdrawal")} triggerLabel={`− ${t("withdrawal")}`} triggerVariant="danger" action={bankOperationAction} fields={opFields("withdrawal")} />
         <FormDialog title={t("bankFee")} triggerLabel={t("bankFee")} triggerVariant="secondary" action={bankOperationAction} fields={opFields("bank_fee")} />
@@ -47,7 +47,7 @@ export default async function BankPage({ searchParams }: { searchParams: SP }) {
           { name: "description", label: t("description"), type: "textarea" },
         ]} />}
         <FormDialog title={t("bankAccount")} triggerLabel={`+ ${t("bankAccount")}`} triggerVariant="secondary" action={saveBankAccount} fields={acctFields()} />
-      </>} />
+      </>}</>} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <Stat label={t("bankBalance")} value={<Money value={r.balance} currency={cur} />} tone="blue" />
         <Stat label={t("in")} value={<Money value={r.totalIn} currency={cur} />} tone="green" />
