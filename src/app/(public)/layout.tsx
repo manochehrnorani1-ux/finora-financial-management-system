@@ -29,7 +29,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
 
   return (
     <div dir={lang === "en" ? "ltr" : "rtl"} className="min-h-screen bg-white text-slate-800">
-      <PublicHeader organizationName={data.org.name} phone={phones[0] || ""} />
+      <PublicHeader organizationName={data.org.name} phone={phones[0] || ""} logoUrl={data.org.logoUrl ? data.org.logoUrl.replace("/api/organization/logo/", "/api/public/organization-logo/") : null} />
       <main>{children}</main>
 
       <footer className="mt-16 bg-slate-950 text-slate-200 print:hidden">
