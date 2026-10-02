@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { pageContext, sp1, type SP } from "@/lib/page";
 import {
   auditReport,
