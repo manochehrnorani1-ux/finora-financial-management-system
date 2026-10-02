@@ -135,3 +135,59 @@ export function formatDateTime(v: string | Date | null | undefined, format: "jal
   const t = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   return `${formatDate(d, format)} ${t}`;
 }
+
+
+/** Normalize user-entered date digits/separators without applying calendar semantics. */
+export function normalizeDateInput(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[\/]/g, "-")
+    .replace(/\s+/g, "");
+}
+
+function validGregorianDate(year: number, month: number, day: number) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (year < 1800 || year > 9999 || month < 1 || month > 12 || day < 1) return false;
+  return day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/**
+ * Parse a case opening date at the server boundary.
+ * Modern Afghan Solar Hijri years (1200-1799) are interpreted as Jalali;
+ * modern Gregorian years (1800+) are interpreted as Gregorian.
+ * The database representation is always Gregorian ISO YYYY-MM-DD.
+ */
+export function parseCaseOpeningDate(value: unknown): string | null {
+  const normalized = normalizeDateInput(value);
+  const match = /^(\d{1,4})-(\d{1,2})-(\d{1,2})$/.exec(normalized);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  if (year >= 1200 && year <= 1799) {
+    if (month < 1 || month > 12 || day < 1 || day > jalaliMonthLength(year, month)) return null;
+    const g = toGregorian(year, month, day);
+    return g.gy + "-" + String(g.gm).padStart(2, "0") + "-" + String(g.gd).padStart(2, "0");
+  }
+
+  if (!validGregorianDate(year, month, day)) return null;
+  return year + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+}
+
+export function validateCaseOpeningDate(value: unknown): boolean {
+  return parseCaseOpeningDate(value) !== null;
+}
+
+export function formatCaseOpeningDate(value: string | null | undefined, format: "jalali" | "gregorian" = "jalali") {
+  const normalized = normalizeDateInput(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+  if (!match) return "-";
+  const gy = Number(match[1]), gm = Number(match[2]), gd = Number(match[3]);
+  if (!validGregorianDate(gy, gm, gd)) return "-";
+  if (format === "gregorian") return normalized;
+  const j = toJalali(gy, gm, gd);
+  return j.jy + "/" + String(j.jm).padStart(2, "0") + "/" + String(j.jd).padStart(2, "0");
+}
