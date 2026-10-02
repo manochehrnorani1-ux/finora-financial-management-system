@@ -8,6 +8,8 @@ import { Badge, Card, PageHeader, Table } from "@/components/ui";
 import { ActionButton, FormDialog } from "@/components/forms";
 import type { Metadata } from "next";
 import { formatDate } from "@/lib/jalali";
+import { canAccessSystemManagement } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "کاربران و صلاحیت‌ها",
@@ -15,6 +17,7 @@ export const metadata: Metadata = {
 
 export default async function UsersPage() {
   const { ctx, t, lang, fmt } = await pageContext("users.read");
+  if (!canAccessSystemManagement(ctx.roleKey, ctx.perms)) redirect("/forbidden");
   const members = await db
     .select({ m: organizationMembers, user: profiles, role: roles.key })
     .from(organizationMembers)
