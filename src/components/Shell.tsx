@@ -7,7 +7,7 @@ import { LANGS } from "@/lib/i18n/dictionary";
 import { logoutAction, setLanguageAction, switchOrganizationAction } from "@/actions/auth";
 import type { NavCounts } from "@/lib/nav-counts";
 import { WORKFLOW_KEYS, WORKFLOW_SERVICES } from "@/lib/case-workflow-definitions";
-import { canAccessSystemManagement } from "@/lib/permissions";
+import { canAccessSystemManagement, type RoleKey } from "@/lib/permissions";
 import { Toaster } from "./forms";
 
 interface MenuItem {
@@ -43,11 +43,12 @@ export const SYSTEM_MENU: MenuItem[] = [
 ];
 
 export function Shell({
-  children, user, org, roleLabel, perms, memberships, navCounts,
+  children, user, org, roleKey, roleLabel, perms, memberships, navCounts,
 }: {
   children: ReactNode;
   user: { fullName: string; email: string };
   org: { id: string; name: string; isDemo: boolean; currency: string };
+  roleKey: RoleKey;
   roleLabel: string;
   perms: string[];
   memberships: { orgId: string; orgName: string; isDemo: boolean }[];
