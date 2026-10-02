@@ -11,6 +11,7 @@ import { ROLE_KEYS, type RoleKey } from "@/lib/permissions";
 import { seedDemoOrganization, systemRoleId } from "@/lib/seed";
 import { act } from "./util";
 import { BACKUP_TABLES, exportOrganizationData } from "@/lib/backup";
+import { formFile, readLogoUpload } from "@/lib/upload";
 
 /* ---------------- Users & roles ---------------- */
 export async function addMember(fd: FormData) {
@@ -106,10 +107,25 @@ export async function saveOrganizationSettings(fd: FormData) {
       updatedAt: new Date(),
     };
     if (!data.name) throw new FinanceError("invalid_input");
+    const logoFile = formFile(fd.get("logo"));
+    const logoBytes = await readLogoUpload(logoFile);
     await db.transaction(async (tx) => {
       const [old] = await tx.select().from(organizations).where(eq(organizations.id, ctx.org.id));
-      await tx.update(organizations).set(data).where(eq(organizations.id, ctx.org.id));
-      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "SETTINGS_CHANGE", entityType: "organization", entityId: ctx.org.id, oldData: old, newData: data });
+      let logoUrl = data.logoUrl;
+      if (logoBytes && logoFile) {
+        const [attachment] = await tx.insert(attachments).values({
+          organizationId: ctx.org.id,
+          fileName: logoFile.name || "organization-logo",
+          mimeType: logoFile.type,
+          fileSize: logoBytes.length,
+          content: logoBytes.toString("base64"),
+          uploadedBy: ctx.user.id,
+        }).returning({ id: attachments.id });
+        logoUrl = `/api/organization/logo/${attachment.id}`;
+      }
+      const nextData = { ...data, logoUrl };
+      await tx.update(organizations).set(nextData).where(eq(organizations.id, ctx.org.id));
+      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "SETTINGS_CHANGE", entityType: "organization", entityId: ctx.org.id, oldData: old, newData: { ...nextData, logoUpload: Boolean(logoBytes) } });
     });
   });
 }
