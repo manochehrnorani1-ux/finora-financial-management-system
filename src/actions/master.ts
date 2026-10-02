@@ -146,24 +146,22 @@ export async function saveCase(fd: FormData) {
     const customerId = str(fd.get("customerId"));
     const serviceId = optStr(fd.get("serviceId"));
     const responsibleEmployeeId = optStr(fd.get("responsibleEmployeeId"));
-    const openedAt = str(fd.get("openedAt")) || new Date().toISOString().slice(0, 10);
+    const rawOpenedAt = str(fd.get("openedAt"));
+    const normalizeDateDigits = (value: string) =>
+      value.replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+    const openedAt = normalizeDateDigits(rawOpenedAt) || new Date().toISOString().slice(0, 10);
     const priorityValue = str(fd.get("priority"));
     const priority = ["normal", "high", "urgent"].includes(priorityValue)
       ? priorityValue
       : "normal";
 
+    // PostgreSQL date is date-only. Validate the canonical ISO value without timezone conversion.
     const isValidIsoDate = (value: string) => {
       if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
       const [year, month, day] = value.split("-").map(Number);
-      const date = new Date(Date.UTC(year, month - 1, day));
-      return (
-        Number.isInteger(year) &&
-        Number.isInteger(month) &&
-        Number.isInteger(day) &&
-        date.getUTCFullYear() === year &&
-        date.getUTCMonth() === month - 1 &&
-        date.getUTCDate() === day
-      );
+      if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+      const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      return day <= daysInMonth;
     };
 
     if (!customerId) throw new FinanceError("customer_not_found");
