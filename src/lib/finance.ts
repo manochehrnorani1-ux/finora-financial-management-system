@@ -415,6 +415,25 @@ export async function ledgerEntry(
   // Avoid re-summing the full customer ledger for every posting.
   const before = round2(Number(acct.currentBalance ?? acct.openingBalance ?? 0));
   const balance = round2(before + round2(p.debit) - round2(p.credit));
+  const [row] = await tx
+    .insert(customerLedger)
+    .values({
+      organizationId: p.orgId,
+      customerId: p.customerId,
+      referenceType: p.referenceType,
+      referenceId: p.referenceId,
+      description: p.description ?? null,
+      debit: round2(p.debit),
+      credit: round2(p.credit),
+      balance,
+      currency: p.currency,
+      transactionDate: p.date ?? new Date(),
+      createdBy: p.userId,
+    })
+    .returning();
+  await tx.update(customerAccounts)
+    .set({ currentBalance: balance })
+    .where(eq(customerAccounts.id, acct.id));
   return row;
 }
 
