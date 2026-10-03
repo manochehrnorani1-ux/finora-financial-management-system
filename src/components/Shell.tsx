@@ -28,6 +28,7 @@ export const PRIMARY_MENU: MenuItem[] = [
   { key: "financeCenter", href: "/finance-center", icon: "💼", perms: ["income.read", "expenses.read", "transactions.read", "cash.read", "bank.read", "accounting.read", "contracts.read"], badge: "approvals", routes: ["/income", "/expenses", "/transactions", "/cash", "/bank", "/customer-accounts", "/accounting", "/contracts", "/receipts"] },
   { key: "taxSettlementGroup", href: "/tax-settlements", icon: "⚖", perms: ["tax_settlements.read", "tax_rules.read", "taxes.read"], badge: "taxReview", routes: ["/tax-returns", "/tax-engine", "/taxes"] },
   { key: "reports", href: "/reports", icon: "📊", perms: ["reports.read"] },
+  { key: "userGuide", href: "/guide", icon: "📘", perms: ["dashboard.read"] },
 ];
 
 export const SYSTEM_MENU: MenuItem[] = [
