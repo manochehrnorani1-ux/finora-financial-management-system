@@ -175,6 +175,7 @@ export function Shell({
               </button>
               {userMenuOpen && <div className="absolute end-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
                 <div className="border-b border-slate-100 px-3 py-2"><div className="font-semibold text-slate-800">{user.fullName}</div><div className="text-xs text-slate-500">{roleLabel}</div><div className="mt-1 truncate text-xs text-slate-500">{org.name}</div></div>
+                <Link href="/" onClick={() => setUserMenuOpen(false)} className="mt-1 block rounded-lg px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50">🌐 وب‌سایت عمومی FINORA</Link>
                 <Link href="/settings" onClick={() => setUserMenuOpen(false)} className="mt-1 block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">{t("accountSettings")}</Link>
                 <form action={logoutAction}><button className="w-full rounded-lg px-3 py-2 text-start text-sm text-red-700 hover:bg-red-50">{t("logout")}</button></form>
               </div>}
