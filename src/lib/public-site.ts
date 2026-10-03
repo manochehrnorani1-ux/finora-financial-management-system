@@ -18,18 +18,28 @@ export const getPublicWebsite = cache(async () => {
     .orderBy(organizations.createdAt)
     .limit(1);
   if (!row) return null;
+
+  const content = (row.site.content as typeof SITE_CONTENT) ?? SITE_CONTENT;
+  const legacyContent = content.fa ?? content.en ?? content.ps ?? {};
+  const legacyPhones = [legacyContent.phone1, legacyContent.phone2, legacyContent.phone3].filter(
+    (phone): phone is string => typeof phone === "string" && phone.trim().length > 0,
+  );
+
   const [contactSetting] = await db
     .select({ value: systemSettings.value })
     .from(systemSettings)
     .where(and(eq(systemSettings.organizationId, row.org.id), eq(systemSettings.key, "contact_phones")))
     .limit(1);
   const rawPhones = (contactSetting?.value as { phones?: unknown } | null)?.phones;
-  const contactPhones = Array.isArray(rawPhones)
+  const configuredPhones = Array.isArray(rawPhones)
     ? rawPhones.filter((phone): phone is string => typeof phone === "string" && phone.trim().length > 0)
     : [];
+
+  const contactPhones = Array.from(new Set([...legacyPhones, ...configuredPhones]));
+
   return {
     ...row,
-    content: (row.site.content as typeof SITE_CONTENT) ?? SITE_CONTENT,
+    content,
     contactPhones,
   };
 });
