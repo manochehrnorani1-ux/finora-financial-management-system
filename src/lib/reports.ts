@@ -290,120 +290,48 @@ export async function auditReport(orgId: string, f: ReportFilters) {
 }
 
 export async function dashboardData(orgId: string, from: string, to: string) {
-  const dateIncome = and(eq(incomes.organizationId, orgId), gte(incomes.incomeDate, from), lte(incomes.incomeDate, to), eq(incomes.status, "finalized"));
-  const dateExpense = and(eq(expenses.organizationId, orgId), gte(expenses.expenseDate, from), lte(expenses.expenseDate, to), eq(expenses.status, "finalized"));
-  const dateJournal = and(eq(journalEntries.organizationId, orgId), eq(journalEntries.status, "posted"), gte(journalEntries.entryDate, from), lte(journalEntries.entryDate, to));
-  const dateTax = and(eq(taxRecords.organizationId, orgId), gte(taxRecords.recordDate, from), lte(taxRecords.recordDate, to));
-
-  const [
-    incomeTotal,
-    expenseTotal,
-    profit,
-    cash,
-    bank,
-    receivables,
-    tax,
-    pending,
-    recentTx,
-    recentDocs,
-    casesSummary,
-    feePaid,
-    byCategory,
-  ] = await Promise.all([
-    db.select({ total: sql<number>\`coalesce(sum(\${incomes.baseAmount}),0)::numeric\` }).from(incomes).where(dateIncome),
-    db.select({ total: sql<number>\`coalesce(sum(\${expenses.baseAmount}),0)::numeric\` }).from(expenses).where(dateExpense),
-    db.select({
-      income: sql<number>\`coalesce(sum(case when \${accounts.accountType} = 'income' then \${journalEntryLines.credit} - \${journalEntryLines.debit} else 0 end),0)::numeric\`,
-      expense: sql<number>\`coalesce(sum(case when \${accounts.accountType} = 'expense' then \${journalEntryLines.debit} - \${journalEntryLines.credit} else 0 end),0)::numeric\`,
-    })
-      .from(journalEntryLines)
-      .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
-      .innerJoin(accounts, eq(journalEntryLines.accountId, accounts.id))
-      .where(dateJournal),
-    db.select({ balance: sql<number>\`coalesce(sum(\${cashAccounts.currentBalance}),0)::numeric\` }).from(cashAccounts).where(eq(cashAccounts.organizationId, orgId)),
-    db.select({ balance: sql<number>\`coalesce(sum(\${bankAccounts.currentBalance}),0)::numeric\` }).from(bankAccounts).where(eq(bankAccounts.organizationId, orgId)),
-    db.execute<{ receivables: string }>(sql\`
-      select coalesce(sum(balance), 0)::numeric as receivables
-      from (
-        select c.id,
-          coalesce(max(ca.opening_balance),0)
-          + coalesce(sum(cl.debit),0)
-          - coalesce(sum(cl.credit),0) as balance
-        from customers c
-        left join customer_accounts ca on ca.customer_id = c.id
-        left join customer_ledger cl on cl.customer_id = c.id
-        where c.organization_id = \${orgId}
-        group by c.id
-      ) balances
-      where balance > 0
-    \`),
-    db.select({ total: sql<number>\`coalesce(sum(\${taxRecords.baseTaxAmount}),0)::numeric\` }).from(taxRecords).where(dateTax),
-    db.execute<{
-      pending_income: number;
-      pending_expense: number;
-      pending_docs: number;
-      under_review_docs: number;
-      awaiting_cases: number;
-      tax_review: number;
-    }>(sql\`
-      select
-        (select count(*)::int from incomes where organization_id = \${orgId} and status = 'pending_approval') as pending_income,
-        (select count(*)::int from expenses where organization_id = \${orgId} and status = 'pending_approval') as pending_expense,
-        (select count(*)::int from documents where organization_id = \${orgId} and status = 'submitted') as pending_docs,
-        (select count(*)::int from documents where organization_id = \${orgId} and status = 'under_review') as under_review_docs,
-        (select count(*)::int from cases where organization_id = \${orgId} and status = 'awaiting_approval') as awaiting_cases,
-        (select count(*)::int from tax_settlements where organization_id = \${orgId} and status = 'REQUIRES_LEGAL_REVIEW') as tax_review
-    \`),
+  const [inc, exp, pl, cash, bank, custBal, tax, docs, pendingInc, pendingExp, recentTx, recentDocs, caseRows, receiptTotal, taxReviewRows] = await Promise.all([
+    incomeReport(orgId, { from, to }),
+    expenseReport(orgId, { from, to }),
+    profitLoss(orgId, { from, to }),
+    db.select().from(cashAccounts).where(eq(cashAccounts.organizationId, orgId)),
+    db.select().from(bankAccounts).where(eq(bankAccounts.organizationId, orgId)),
+    customerBalances(orgId),
+    taxReport(orgId, { from, to }),
+    db.select({ status: documents.status, n: sql<number>`count(*)::int` }).from(documents).where(eq(documents.organizationId, orgId)).groupBy(documents.status),
+    db.select({ n: sql<number>`count(*)::int` }).from(incomes).where(and(eq(incomes.organizationId, orgId), eq(incomes.status, "pending_approval"))),
+    db.select({ n: sql<number>`count(*)::int` }).from(expenses).where(and(eq(expenses.organizationId, orgId), eq(expenses.status, "pending_approval"))),
     db.select().from(transactions).where(eq(transactions.organizationId, orgId)).orderBy(desc(transactions.transactionDate), desc(transactions.createdAt)).limit(8),
-    db.select({ d: documents, customer: customers.name })
-      .from(documents)
-      .leftJoin(customers, eq(documents.customerId, customers.id))
-      .where(eq(documents.organizationId, orgId))
-      .orderBy(desc(documents.createdAt))
-      .limit(6),
-    db.select({
-      active: sql<number>\`coalesce(sum(case when \${cases.status} not in ('closed','cancelled') then 1 else 0 end),0)::int\`,
-      completed: sql<number>\`coalesce(sum(case when \${cases.status} in ('closed','delivered') then 1 else 0 end),0)::int\`,
-      missingDocs: sql<number>\`coalesce(sum(case when \${cases.status} = 'missing_documents' then 1 else 0 end),0)::int\`,
-      feeTotal: sql<number>\`coalesce(sum(case when \${cases.status} <> 'cancelled' then \${cases.serviceFee} - \${cases.discountAmount} else 0 end),0)::numeric\`,
-    }).from(cases).where(eq(cases.organizationId, orgId)),
-    db.select({ paid: sql<number>\`coalesce(sum(\${serviceFeeReceipts.paidAmount}),0)::numeric\` })
-      .from(serviceFeeReceipts)
-      .where(eq(serviceFeeReceipts.organizationId, orgId)),
-    db.select({
-      category: expenses.category,
-      total: sql<number>\`coalesce(sum(\${expenses.baseAmount}),0)::numeric\`,
-    }).from(expenses).where(dateExpense).groupBy(expenses.category),
+    db.select({ d: documents, customer: customers.name }).from(documents).leftJoin(customers, eq(documents.customerId, customers.id)).where(eq(documents.organizationId, orgId)).orderBy(desc(documents.createdAt)).limit(6),
+    db.select({ status: cases.status, serviceFee: cases.serviceFee, discountAmount: cases.discountAmount }).from(cases).where(eq(cases.organizationId, orgId)),
+    db.select({ paid: sql<number>`coalesce(sum(${serviceFeeReceipts.paidAmount}),0)::numeric` }).from(serviceFeeReceipts).where(eq(serviceFeeReceipts.organizationId, orgId)),
+    db.select({ n: sql<number>`count(*)::int` }).from(taxSettlements).where(and(eq(taxSettlements.organizationId, orgId), eq(taxSettlements.status, "REQUIRES_LEGAL_REVIEW"))),
   ]);
-
-  const feeTotal = Number(casesSummary[0]?.feeTotal ?? 0);
-  const feePaidValue = Number(feePaid[0]?.paid ?? 0);
-  const categoryTotals: Record<string, number> = {};
-  for (const row of byCategory) categoryTotals[row.category] = round2(Number(row.total));
-
+  const pendingDocs = docs.filter((d) => ["submitted", "under_review"].includes(d.status)).reduce((s, d) => s + d.n, 0);
+  const activeCases = caseRows.filter((c) => !["closed", "cancelled"].includes(c.status)).length;
+  const completedCases = caseRows.filter((c) => c.status === "closed" || c.status === "delivered").length;
+  const missingCaseDocs = caseRows.filter((c) => c.status === "missing_documents").length;
+  const feeTotal = round2(caseRows.filter((c) => c.status !== "cancelled").reduce((s, c) => s + Number(c.serviceFee) - Number(c.discountAmount), 0));
+  const feePaid = Number(receiptTotal[0]?.paid ?? 0);
   return {
-    totalIncome: round2(Number(incomeTotal[0]?.total ?? 0)),
-    totalExpenses: round2(Number(expenseTotal[0]?.total ?? 0)),
-    netProfit: round2(Number(profit[0]?.income ?? 0) - Number(profit[0]?.expense ?? 0)),
-    cashBalance: round2(Number(cash[0]?.balance ?? 0)),
-    bankBalance: round2(Number(bank[0]?.balance ?? 0)),
-    receivables: round2(Number(receivables.rows[0]?.receivables ?? 0)),
-    taxes: round2(Number(tax[0]?.total ?? 0)),
-    pendingDocs: Number(pending.rows[0]?.pending_docs ?? 0) + Number(pending.rows[0]?.under_review_docs ?? 0),
-    pendingApprovals:
-      Number(pending.rows[0]?.pending_income ?? 0) +
-      Number(pending.rows[0]?.pending_expense ?? 0) +
-      Number(pending.rows[0]?.under_review_docs ?? 0) +
-      Number(pending.rows[0]?.awaiting_cases ?? 0),
-    activeCases: Number(casesSummary[0]?.active ?? 0),
-    completedCases: Number(casesSummary[0]?.completed ?? 0),
-    missingCaseDocs: Number(casesSummary[0]?.missingDocs ?? 0),
-    serviceFeeTotal: round2(feeTotal),
-    serviceFeePaid: round2(feePaidValue),
-    serviceFeeRemaining: round2(Math.max(0, feeTotal - feePaidValue)),
-    taxNeedsReview: Number(pending.rows[0]?.tax_review ?? 0),
+    totalIncome: inc.total,
+    totalExpenses: exp.total,
+    netProfit: pl.net,
+    cashBalance: round2(cash.reduce((s, a) => s + Number(a.currentBalance), 0)),
+    bankBalance: round2(bank.reduce((s, a) => s + Number(a.currentBalance), 0)),
+    receivables: round2(custBal.filter((c) => c.balance > 0).reduce((s, c) => s + c.balance, 0)),
+    taxes: tax.total,
+    pendingDocs,
+    pendingApprovals: pendingInc[0].n + pendingExp[0].n + docs.filter((d) => d.status === "under_review").reduce((s, d) => s + d.n, 0) + caseRows.filter((c) => c.status === "awaiting_approval").length,
+    activeCases,
+    completedCases,
+    missingCaseDocs,
+    serviceFeeTotal: feeTotal,
+    serviceFeePaid: round2(feePaid),
+    serviceFeeRemaining: round2(Math.max(0, feeTotal - feePaid)),
+    taxNeedsReview: taxReviewRows[0]?.n ?? 0,
     recentTx,
     recentDocs,
-    byCategory: categoryTotals,
+    byCategory: exp.byCategory,
   };
 }
