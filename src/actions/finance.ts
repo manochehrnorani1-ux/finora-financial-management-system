@@ -1,7 +1,7 @@
 "use server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { accounts, bankAccounts, cashAccounts, cases, customerAccounts, expenses, incomes, journalEntries, journalEntryLines, serviceFeeReceipts, taxRates, taxTypes } from "@/db/schema";
+import { accounts, bankAccounts, cashAccounts, cases, customerAccounts, expenses, incomes, journalEntries, journalEntryLines, serviceFeeReceipts, taxTypes } from "@/db/schema";
 import { requireContext, type AppContext } from "@/lib/auth";
 import { audit, createJournal, FinanceError, getActiveTaxRate, getExchangeRate, nextNumber, type Tx } from "@/lib/finance";
 import { num, optStr, round2, str } from "@/lib/format";
@@ -529,34 +529,6 @@ export async function saveTaxType(fd: FormData) {
       }
       const [row] = await tx.insert(taxTypes).values({ ...data, organizationId: ctx.org.id }).returning();
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "tax_type", entityId: row.id, newData: row });
-      return { id: row.id };
-    });
-  });
-}
-
-export async function saveTaxRate(fd: FormData) {
-  return act(async () => {
-    const ctx = await requireContext("taxes.write");
-    const taxTypeId = str(fd.get("taxTypeId"));
-    const rateVal = num(fd.get("rate"));
-    const effectiveFrom = str(fd.get("effectiveFrom")) || todayIso();
-    if (rateVal < 0 || rateVal > 100 || !taxTypeId) throw new FinanceError("invalid_input");
-    return db.transaction(async (tx) => {
-      const [tt] = await tx.select().from(taxTypes).where(and(eq(taxTypes.id, taxTypeId), eq(taxTypes.organizationId, ctx.org.id)));
-      if (!tt) throw new FinanceError("not_found");
-      // Close previous open-ended rates so history is preserved and only the new rate applies going forward.
-      const prevDay = new Date(effectiveFrom + "T12:00:00");
-      prevDay.setDate(prevDay.getDate() - 1);
-      const prevIso = prevDay.toISOString().slice(0, 10);
-      const open = await tx.select().from(taxRates).where(and(eq(taxRates.taxTypeId, taxTypeId), eq(taxRates.isActive, true)));
-      for (const o of open) {
-        if (!o.effectiveTo || o.effectiveTo >= effectiveFrom) {
-          if (o.effectiveFrom >= effectiveFrom) await tx.update(taxRates).set({ isActive: false }).where(eq(taxRates.id, o.id));
-          else await tx.update(taxRates).set({ effectiveTo: prevIso }).where(eq(taxRates.id, o.id));
-        }
-      }
-      const [row] = await tx.insert(taxRates).values({ organizationId: ctx.org.id, taxTypeId, rate: rateVal, effectiveFrom, effectiveTo: optStr(fd.get("effectiveTo")), isActive: true }).returning();
-      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "CREATE", entityType: "tax_rate", entityId: row.id, newData: row });
       return { id: row.id };
     });
   });

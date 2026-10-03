@@ -766,17 +766,6 @@ export const taxTypes = pgTable("tax_types", {
   createdAt: createdAt(),
 });
 
-export const taxRates = pgTable("tax_rates", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull(),
-  taxTypeId: uuid("tax_type_id").notNull().references(() => taxTypes.id, { onDelete: "cascade" }),
-  rate: rate("rate"),
-  effectiveFrom: date("effective_from").notNull(),
-  effectiveTo: date("effective_to"),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: createdAt(),
-});
-
 export const taxRecords = pgTable(
   "tax_records",
   {
