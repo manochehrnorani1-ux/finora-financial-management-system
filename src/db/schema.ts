@@ -444,18 +444,6 @@ export const documents = pgTable(
   (t) => [uniqueIndex("documents_number_unique").on(t.organizationId, t.documentNumber), index("documents_org_status_idx").on(t.organizationId, t.status)],
 );
 
-export const documentRevisions = pgTable("document_revisions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull(),
-  documentId: uuid("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
-  revision: integer("revision").notNull(),
-  snapshot: jsonb("snapshot").notNull(),
-  changes: jsonb("changes").notNull(),
-  reason: text("reason"),
-  createdBy: uuid("created_by"),
-  createdAt: createdAt(),
-});
-
 export const attachments = pgTable("attachments", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
@@ -463,19 +451,6 @@ export const attachments = pgTable("attachments", {
   mimeType: text("mime_type").notNull(),
   fileSize: bigint("file_size", { mode: "number" }).notNull(),
   content: text("content").notNull(),
-  uploadedBy: uuid("uploaded_by"),
-  createdAt: createdAt(),
-});
-
-export const documentFiles = pgTable("document_files", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull(),
-  documentId: uuid("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
-  attachmentId: uuid("attachment_id").notNull().references(() => attachments.id, { onDelete: "cascade" }),
-  fileName: text("file_name").notNull(),
-  storagePath: text("storage_path").notNull(),
-  mimeType: text("mime_type").notNull(),
-  fileSize: bigint("file_size", { mode: "number" }).notNull(),
   uploadedBy: uuid("uploaded_by"),
   createdAt: createdAt(),
 });
@@ -869,16 +844,6 @@ export const publicSites = pgTable("public_sites", {
   content: jsonb("content").notNull().default({}),
   updatedBy: uuid("updated_by").references(() => profiles.id),
   updatedAt: updatedAt(),
-});
-
-export const caseNotes = pgTable("case_notes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  caseId: uuid("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
-  body: text("body").notNull(),
-  visibility: text("visibility").notNull().default("internal"),
-  createdBy: uuid("created_by").references(() => profiles.id),
-  createdAt: createdAt(),
 });
 
 export const caseFiles = pgTable("case_files", {
