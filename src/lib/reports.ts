@@ -100,7 +100,14 @@ export async function profitLoss(orgId: string, f: ReportFilters) {
       credit: sql<number>`coalesce(sum(${journalEntryLines.credit}),0)::numeric`,
     })
     .from(journalEntryLines)
-    .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
+    .innerJoin(
+      journalEntries,
+      and(
+        eq(journalEntryLines.journalEntryId, journalEntries.id),
+        eq(journalEntryLines.organizationId, orgId),
+        eq(journalEntries.organizationId, orgId),
+      ),
+    )
     .innerJoin(accounts, eq(journalEntryLines.accountId, accounts.id))
     .where(and(...where))
     .groupBy(accounts.id, accounts.accountCode, accounts.accountName, accounts.accountType)
@@ -127,7 +134,15 @@ export async function trialBalance(orgId: string, to?: string) {
     })
     .from(accounts)
     .leftJoin(journalEntryLines, eq(journalEntryLines.accountId, accounts.id))
-    .leftJoin(journalEntries, and(eq(journalEntryLines.journalEntryId, journalEntries.id), ...where.slice(1)))
+    .leftJoin(
+      journalEntries,
+      and(
+        eq(journalEntryLines.journalEntryId, journalEntries.id),
+        eq(journalEntryLines.organizationId, orgId),
+        eq(journalEntries.organizationId, orgId),
+        ...where.slice(1),
+      ),
+    )
     .where(eq(accounts.organizationId, orgId))
     .groupBy(accounts.id, accounts.accountCode, accounts.accountName, accounts.accountType)
     .orderBy(accounts.accountCode);
