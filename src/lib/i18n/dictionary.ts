@@ -29,6 +29,7 @@ const D = {
   customerAccounts: ["حساب مشتریان", "د پیرودونکو حسابونه", "Customer Accounts"],
   taxes: ["مالیه", "مالیه", "Taxes"],
   reports: ["گزارش‌ها", "راپورونه", "Reports"],
+  userGuide: ["کتابچه رهنما", "د لارښود کتابچه", "User Guide"],
   usersRoles: ["کاربران و صلاحیت‌ها", "کارونکي او صلاحیتونه", "Users & Roles"],
   auditLog: ["ثبت فعالیت‌ها", "د فعالیتونو ثبت", "Audit Log"],
   backupRestore: ["پشتیبان‌گیری و بازیابی", "بیک اپ او بیا راګرځول", "Backup & Restore"],
