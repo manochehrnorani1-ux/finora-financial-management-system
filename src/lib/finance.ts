@@ -487,7 +487,6 @@ export async function recordTransaction(
       isDemo: p.isDemo ?? false,
     })
     .returning();
-  await tx.update(customerAccounts).set({ currentBalance: balance }).where(eq(customerAccounts.id, acct.id));
   return row;
 }
 
