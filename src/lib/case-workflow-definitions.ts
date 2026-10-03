@@ -13,7 +13,7 @@ export const WORKFLOW_SERVICES: Record<WorkflowKey, {
   label: Record<Language, string>;
   summary: Record<Language, string>;
   requirements: Record<Language, string[]>;
-  stages: readonly StageKey[];
+  stages: readonly string[];
   publicListed: boolean;
 }> = {
   "tax-settlement": {
