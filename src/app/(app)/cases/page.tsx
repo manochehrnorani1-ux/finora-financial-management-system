@@ -10,7 +10,7 @@ import { Badge, Card, Money, PageHeader, Stat, Table } from "@/components/ui";
 import { FormDialog, type Field } from "@/components/forms";
 import { formatDate, todayIso } from "@/lib/jalali";
 
-export const metadata: Metadata = { title: "دوسیه‌های خدمات FINORA" };
+export const metadata: Metadata = { title: "خدمات مشتریان FINORA" };
 const STATUSES = ["new", "reviewing", "missing_documents", "in_progress", "awaiting_review", "awaiting_approval", "ready_for_delivery", "delivered", "closed", "cancelled"];
 
 export default async function CasesPage({ searchParams }: { searchParams: SP }) {
@@ -60,14 +60,14 @@ export default async function CasesPage({ searchParams }: { searchParams: SP }) 
   const overdue = allSteps.filter((s) => s.dueDate && s.dueDate < todayIso() && s.status === "active").length;
   return (
     <>
-      <PageHeader title={t("cases")} subtitle={`${activeCount} ${t("active")} · ${rows.length} ${t("records")}`} actions={<>
+      <PageHeader title="خدمات مشتریان" subtitle={`${activeCount} خدمت در جریان · ${rows.length} خدمت ثبت‌شده`} actions={<>
         <form method="get" className="flex flex-wrap gap-2">
           <input name="q" defaultValue={search} placeholder={t("search")} className="input max-w-[180px]" />
           <select name="serviceKey" defaultValue={serviceKey} className="input !w-auto"><option value="">{t("service")}: {t("all")}</option>{WORKFLOW_KEYS.map((key) => <option key={key} value={key}>{WORKFLOW_SERVICES[key].label[lang]}</option>)}</select>
           <select name="status" defaultValue={status} className="input !w-auto"><option value="">{t("all")}</option>{STATUSES.map((s) => <option key={s} value={s}>{t(s)}</option>)}</select>
           <button className="rounded-lg border border-slate-300 bg-white px-3 text-sm">{t("filter")}</button>
         </form>
-        {ctx.can("cases.write") && <FormDialog title={`${t("create")} — ${t("case")}`} triggerLabel={`+ ${t("create")}`} action={saveCase} fields={formFields} wide successPath="/cases/{id}" />}
+        {ctx.can("cases.write") && <FormDialog title="ثبت خدمت مشتری" triggerLabel={`+ ${t("create")}`} action={saveCase} fields={formFields} wide successPath="/cases/{id}" />}
       </>} />
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4"><Stat label={t("activeCases")} value={activeCount} tone="blue" /><Stat label={t("completedCases")} value={rows.filter((r) => r.c.status === "closed").length} tone="green" /><Stat label={t("missingDocuments")} value={rows.filter((r) => r.c.status === "missing_documents").length} tone="amber" /><Stat label={t("milestoneOverdue")} value={overdue} tone={overdue ? "red" : "default"} /></div>
       <Card>
