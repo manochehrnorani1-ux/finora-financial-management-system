@@ -290,35 +290,34 @@ export async function auditReport(orgId: string, f: ReportFilters) {
 }
 
 export async function dashboardData(orgId: string, from: string, to: string) {
-  // Dashboard is a hot path. Keep the number of DB round-trips low and aggregate
-  // on PostgreSQL instead of transferring whole report datasets to the serverless
-  // function and reducing them in Node.js.
+  // Hot path: use set-based CTE aggregates so PostgreSQL scans each source once
+  // instead of executing correlated subqueries for every customer.
   const metricsResult = await db.execute(sql`
-    select
-      (
-        select coalesce(sum(i.base_amount), 0)::numeric
+    with
+      income_total as (
+        select coalesce(sum(i.base_amount), 0)::numeric as value
         from incomes i
         where i.organization_id = ${orgId}
           and i.income_date >= ${from}
           and i.income_date <= ${to}
           and i.status = 'finalized'
-      ) as total_income,
-      (
-        select coalesce(sum(e.base_amount), 0)::numeric
+      ),
+      expense_total as (
+        select coalesce(sum(e.base_amount), 0)::numeric as value
         from expenses e
         where e.organization_id = ${orgId}
           and e.expense_date >= ${from}
           and e.expense_date <= ${to}
           and e.status = 'finalized'
-      ) as total_expenses,
-      (
+      ),
+      profit_total as (
         select coalesce(sum(
           case
             when a.account_type = 'income' then jel.credit - jel.debit
             when a.account_type = 'expense' then jel.debit - jel.credit
             else 0
           end
-        ), 0)::numeric
+        ), 0)::numeric as value
         from journal_entry_lines jel
         inner join journal_entries je on je.id = jel.journal_entry_id
         inner join accounts a on a.id = jel.account_id
@@ -326,105 +325,70 @@ export async function dashboardData(orgId: string, from: string, to: string) {
           and je.status = 'posted'
           and je.entry_date >= ${from}
           and je.entry_date <= ${to}
-      ) as net_profit,
-      (
-        select coalesce(sum(ca.current_balance), 0)::numeric
+          and a.account_type in ('income', 'expense')
+      ),
+      cash_total as (
+        select coalesce(sum(ca.current_balance), 0)::numeric as value
         from cash_accounts ca
         where ca.organization_id = ${orgId}
-      ) as cash_balance,
-      (
-        select coalesce(sum(ba.current_balance), 0)::numeric
+      ),
+      bank_total as (
+        select coalesce(sum(ba.current_balance), 0)::numeric as value
         from bank_accounts ba
         where ba.organization_id = ${orgId}
-      ) as bank_balance,
-      (
-        select coalesce(sum(greatest(coalesce(x.opening, 0) + coalesce(x.debit, 0) - coalesce(x.credit, 0), 0)), 0)::numeric
-        from (
-          select
-            c.id,
-            max(coalesce(ca.opening_balance, 0)) as opening,
-            coalesce((select sum(cl.debit) from customer_ledger cl where cl.customer_id = c.id and cl.organization_id = ${orgId}), 0) as debit,
-            coalesce((select sum(cl.credit) from customer_ledger cl where cl.customer_id = c.id and cl.organization_id = ${orgId}), 0) as credit
-          from customers c
-          left join customer_accounts ca on ca.customer_id = c.id
-          where c.organization_id = ${orgId}
-          group by c.id
-        ) x
-      ) as receivables,
-      (
-        select coalesce(sum(tr.base_tax_amount), 0)::numeric
+      ),
+      customer_balances as (
+        select
+          c.id,
+          greatest(
+            coalesce(max(ca.opening_balance), 0)
+            + coalesce(sum(cl.debit), 0)
+            - coalesce(sum(cl.credit), 0),
+            0
+          ) as balance
+        from customers c
+        left join customer_accounts ca on ca.customer_id = c.id
+        left join customer_ledger cl
+          on cl.customer_id = c.id
+         and cl.organization_id = ${orgId}
+        where c.organization_id = ${orgId}
+        group by c.id
+      ),
+      receivables_total as (
+        select coalesce(sum(balance), 0)::numeric as value
+        from customer_balances
+      ),
+      tax_total as (
+        select coalesce(sum(tr.base_tax_amount), 0)::numeric as value
         from tax_records tr
         where tr.organization_id = ${orgId}
           and tr.record_date >= ${from}
           and tr.record_date <= ${to}
-      ) as taxes,
-      (
-        select count(*)::int
-        from documents d
-        where d.organization_id = ${orgId}
-          and d.status in ('submitted', 'under_review')
-      ) as pending_docs,
-      (
-        select count(*)::int
-        from incomes i
-        where i.organization_id = ${orgId}
-          and i.status = 'pending_approval'
-      ) as pending_income,
-      (
-        select count(*)::int
-        from expenses e
-        where e.organization_id = ${orgId}
-          and e.status = 'pending_approval'
-      ) as pending_expenses,
-      (
-        select count(*)::int
-        from cases c
-        where c.organization_id = ${orgId}
-          and c.status = 'awaiting_approval'
-      ) as pending_case_approvals,
-      (
-        select count(*)::int
-        from documents d
-        where d.organization_id = ${orgId}
-          and d.status = 'under_review'
-      ) as under_review_docs,
-      (
-        select count(*)::int
-        from cases c
-        where c.organization_id = ${orgId}
-          and c.status not in ('closed', 'cancelled')
-      ) as active_cases,
-      (
-        select count(*)::int
-        from cases c
-        where c.organization_id = ${orgId}
-          and c.status in ('closed', 'delivered')
-      ) as completed_cases,
-      (
-        select count(*)::int
-        from cases c
-        where c.organization_id = ${orgId}
-          and c.status = 'missing_documents'
-      ) as missing_case_docs,
-      (
-        select coalesce(sum(c.service_fee - c.discount_amount), 0)::numeric
-        from cases c
-        where c.organization_id = ${orgId}
-          and c.status <> 'cancelled'
-      ) as service_fee_total,
-      (
-        select coalesce(sum(sfr.paid_amount), 0)::numeric
-        from service_fee_receipts sfr
-        where sfr.organization_id = ${orgId}
-      ) as service_fee_paid,
-      (
-        select count(*)::int
-        from tax_settlements ts
-        where ts.organization_id = ${orgId}
-          and ts.status = 'REQUIRES_LEGAL_REVIEW'
-      ) as tax_needs_review,
-      (
-        select coalesce(jsonb_object_agg(e.category, e.total), '{}'::jsonb)
+      ),
+      pending as (
+        select
+          (select count(*) from documents d where d.organization_id = ${orgId} and d.status in ('submitted', 'under_review'))::int as pending_docs,
+          (select count(*) from incomes i where i.organization_id = ${orgId} and i.status = 'pending_approval')::int as pending_income,
+          (select count(*) from expenses e where e.organization_id = ${orgId} and e.status = 'pending_approval')::int as pending_expenses,
+          (select count(*) from cases c where c.organization_id = ${orgId} and c.status = 'awaiting_approval')::int as pending_case_approvals,
+          (select count(*) from documents d where d.organization_id = ${orgId} and d.status = 'under_review')::int as under_review_docs,
+          (select count(*) from cases c where c.organization_id = ${orgId} and c.status not in ('closed', 'cancelled'))::int as active_cases,
+          (select count(*) from cases c where c.organization_id = ${orgId} and c.status in ('closed', 'delivered'))::int as completed_cases,
+          (select count(*) from cases c where c.organization_id = ${orgId} and c.status = 'missing_documents')::int as missing_case_docs,
+          (select count(*) from tax_settlements ts where ts.organization_id = ${orgId} and ts.status = 'REQUIRES_LEGAL_REVIEW')::int as tax_needs_review
+      ),
+      service_fees as (
+        select
+          (select coalesce(sum(c.service_fee - c.discount_amount), 0)::numeric
+             from cases c
+            where c.organization_id = ${orgId}
+              and c.status <> 'cancelled') as total,
+          (select coalesce(sum(sfr.paid_amount), 0)::numeric
+             from service_fee_receipts sfr
+            where sfr.organization_id = ${orgId}) as paid
+      ),
+      category_totals as (
+        select coalesce(jsonb_object_agg(e.category, e.total), '{}'::jsonb) as value
         from (
           select e.category, coalesce(sum(e.base_amount), 0)::numeric as total
           from expenses e
@@ -434,7 +398,22 @@ export async function dashboardData(orgId: string, from: string, to: string) {
             and e.status = 'finalized'
           group by e.category
         ) e
-      ) as by_category
+      )
+    select
+      (select value from income_total) as total_income,
+      (select value from expense_total) as total_expenses,
+      (select value from profit_total) as net_profit,
+      (select value from cash_total) as cash_balance,
+      (select value from bank_total) as bank_balance,
+      (select value from receivables_total) as receivables,
+      (select value from tax_total) as taxes,
+      p.*,
+      sf.total as service_fee_total,
+      sf.paid as service_fee_paid,
+      ct.value as by_category
+    from pending p
+    cross join service_fees sf
+    cross join category_totals ct
   `);
 
   const recentTxResult = await db
@@ -505,4 +484,3 @@ export async function dashboardData(orgId: string, from: string, to: string) {
     ),
   };
 }
-
