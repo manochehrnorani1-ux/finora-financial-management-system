@@ -74,43 +74,72 @@ export interface AppContext {
   can: (p: Permission) => boolean;
 }
 
-/** Resolve the current user's active organization membership + effective permissions (from DB). */
+/** Resolve the current user's active organization and effective permissions in one DB query. */
 export const getContext = cache(async (): Promise<AppContext | null> => {
   const user = await getSessionUser();
   if (!user) return null;
-  const memberships = await db
+
+  const rows = await db
     .select({
+      org: organizations,
       orgId: organizations.id,
       orgName: organizations.name,
       roleKey: roles.key,
       roleId: roles.id,
       isDemo: organizations.isDemo,
       status: organizationMembers.status,
+      permissionKey: permissions.key,
     })
     .from(organizationMembers)
     .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
     .innerJoin(roles, eq(organizationMembers.roleId, roles.id))
+    .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+    .leftJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
     .where(and(eq(organizationMembers.userId, user.id), eq(organizationMembers.status, "active")));
-  if (memberships.length === 0) return null;
+
+  if (rows.length === 0) return null;
+
+  const membershipMap = new Map<string, { orgId: string; orgName: string; roleKey: string; roleId: string; isDemo: boolean }>();
+  for (const row of rows) {
+    if (!membershipMap.has(row.orgId)) {
+      membershipMap.set(row.orgId, {
+        orgId: row.orgId,
+        orgName: row.orgName,
+        roleKey: row.roleKey,
+        roleId: row.roleId,
+        isDemo: row.isDemo,
+      });
+    }
+  }
+
+  const memberships = [...membershipMap.values()];
   let active = memberships.find((m) => m.orgId === user.activeOrganizationId);
   if (!active) {
     active = memberships[0];
     await db.update(profiles).set({ activeOrganizationId: active.orgId }).where(eq(profiles.id, user.id));
   }
-  const [org] = await db.select().from(organizations).where(eq(organizations.id, active.orgId));
-  const permRows = await db
-    .select({ key: permissions.key })
-    .from(rolePermissions)
-    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-    .where(eq(rolePermissions.roleId, active.roleId));
-  const perms = new Set(permRows.map((r) => r.key as Permission));
+
+  const activeRow = rows.find((row) => row.orgId === active.orgId);
+  if (!activeRow) return null;
+
+  const perms = new Set(
+    rows
+      .filter((row) => row.orgId === active.orgId && row.permissionKey)
+      .map((row) => row.permissionKey as Permission),
+  );
+
   return {
     user,
-    org,
+    org: activeRow.org,
     roleKey: active.roleKey as RoleKey,
     roleId: active.roleId,
     perms,
-    memberships: memberships.map((m) => ({ orgId: m.orgId, orgName: m.orgName, roleKey: m.roleKey, isDemo: m.isDemo })),
+    memberships: memberships.map((m) => ({
+      orgId: m.orgId,
+      orgName: m.orgName,
+      roleKey: m.roleKey,
+      isDemo: m.isDemo,
+    })),
     can: (p) => perms.has(p),
   };
 });
