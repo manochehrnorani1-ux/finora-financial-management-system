@@ -116,7 +116,13 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                       ]}
                     />
                     {step.status === "active" && stepAmount > 0 && stepRemaining > 0 && <FormDialog title="ثبت پرداخت مرحله" triggerLabel="ثبت پرداخت" triggerSize="sm" action={recordCaseWorkflowPaymentAction} hidden={{ stepId: step.id }} fields={[{ name: "amount", label: "مبلغ پرداخت (" + c.feeCurrency + ")", type: "number", required: true, defaultValue: stepRemaining }, { name: "paymentDate", label: "تاریخ پرداخت", type: "date", required: true }, { name: "paymentMethod", label: "روش پرداخت" }, { name: "referenceNumber", label: "شماره مرجع/رسید" }, { name: "notes", label: "یادداشت", type: "textarea", full: true }]} />}
-                    {step.status === "active" && <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />}
+                    {step.status === "active" && c.workflowKey === "tax-settlement" && step.stepNo === 5 && settlements.length === 0 ? (
+                      <Link href={`/tax-settlements?caseId=${c.id}`} className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white">
+                        ثبت تصفیه مالیاتی همین دوسیه →
+                      </Link>
+                    ) : step.status === "active" ? (
+                      <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
+                    ) : null}
                   </div>
                 )}
               </div>
