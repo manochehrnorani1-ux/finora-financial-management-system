@@ -14,7 +14,7 @@ export default async function ContactPage() {
   if (!site) return null;
   const content = site.content as Record<string, Record<string, string>>;
   const c = content[lang] ?? content.fa ?? {};
-  const phones = [c.phone1, c.phone2, c.phone3].filter(Boolean);
+  const phones = site.contactPhones.length ? site.contactPhones : [c.phone1, c.phone2, c.phone3].filter(Boolean);
   const email = c.email || site.org.email || "";
   const address = c.address || site.org.address || t("addressShort");
 

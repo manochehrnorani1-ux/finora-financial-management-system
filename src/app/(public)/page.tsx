@@ -16,7 +16,7 @@ export default async function PublicHomePage() {
   if (!site) return null;
   const content = site.content as Record<string, Record<string, string>>;
   const c = content[lang] ?? content.fa ?? {};
-  const phone = c.phone1 || site.org.phone || "";
+  const phone = site.contactPhones[0] || c.phone1 || site.org.phone || "";
   const cleanPhone = phone.replace(/\s/g, "");
 
   const benefits = [

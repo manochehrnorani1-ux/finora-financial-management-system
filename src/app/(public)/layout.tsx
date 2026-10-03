@@ -16,7 +16,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
 
   const content = data.content as Record<string, Record<string, string>>;
   const c = content[lang] ?? content.fa ?? {};
-  const phones = [c.phone1, c.phone2, c.phone3].filter(Boolean);
+  const phones = data.contactPhones.length ? data.contactPhones : [c.phone1, c.phone2, c.phone3].filter(Boolean);
   const email = c.email || data.org.email || "";
   const address = c.address || data.org.address || "";
   const serviceLinks = SERVICE_GROUPS.flatMap((group) =>
