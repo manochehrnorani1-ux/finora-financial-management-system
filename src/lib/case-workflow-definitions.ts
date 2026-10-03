@@ -6,19 +6,6 @@ export type WorkflowKey = (typeof WORKFLOW_KEYS)[number];
 export const isWorkflowKey = (v: string): v is WorkflowKey => WORKFLOW_KEYS.includes(v as WorkflowKey);
 export type Language = "fa" | "ps" | "en";
 
-export const WORKFLOW_STAGES = {
-  intake: { title: "wfIntake", input: "wfIntakeInput", action: "wfIntakeAction", result: "wfIntakeResult" },
-  license_check: { title: "wfLicense", input: "wfLicenseInput", action: "wfLicenseAction", result: "wfLicenseResult" },
-  documents: { title: "wfDocuments", input: "wfDocumentsInput", action: "wfDocumentsAction", result: "wfDocumentsResult" },
-  financial_review: { title: "wfFinancial", input: "wfFinancialInput", action: "wfFinancialAction", result: "wfFinancialResult" },
-  settlement: { title: "wfSettlement", input: "wfSettlementInput", action: "wfSettlementAction", result: "wfSettlementResult" },
-  service_fee: { title: "wfFee", input: "wfFeeInput", action: "wfFeeAction", result: "wfFeeResult" },
-  corrective_plan: { title: "wfPlan", input: "wfPlanInput", action: "wfPlanAction", result: "wfPlanResult" },
-  authority_followup: { title: "wfAuthority", input: "wfAuthorityInput", action: "wfAuthorityAction", result: "wfAuthorityResult" },
-  outcome: { title: "wfOutcome", input: "wfOutcomeInput", action: "wfOutcomeAction", result: "wfOutcomeResult" },
-} as const;
-export type StageKey = keyof typeof WORKFLOW_STAGES;
-
 const existing = (key: string) => OPERATIONAL_SERVICES.find((s) => s.key === key);
 const docs = (key: string) => existing(key)?.requiredDocuments ?? { fa: [], ps: [], en: [] };
 
@@ -66,6 +53,3 @@ export const WORKFLOW_SERVICES: Record<WorkflowKey, {
     stages: ["intake", "license_check", "documents", "corrective_plan", "settlement", "authority_followup", "outcome"], publicListed: false,
   },
 };
-
-/** Staff view only; never represents a government form or legal decision. */
-export const SERVICE_FLOW = WORKFLOW_KEYS.map((key) => ({ key, ...WORKFLOW_SERVICES[key] }));
