@@ -185,7 +185,7 @@ export default async function ServiceManagementPage({ searchParams }: { searchPa
             const def = WORKFLOW_SERVICES[key];
             const svc = rows.find((r) => r.s.workflowKey === key)?.s;
             const activeCases = caseRows.filter((k) => k.serviceId === svc?.id).length;
-            return <Link key={key} href={`/services-workflow/${key}`} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-400 hover:shadow-md">
+            return <Link key={key} href={`/cases?serviceKey=${key}`} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-400 hover:shadow-md">
               <div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 font-mono text-sm font-bold text-emerald-800">{String(index + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1"><h3 className="font-bold text-slate-900">{def.label[lang]}</h3><p className="mt-1 text-xs leading-6 text-slate-500">{def.summary[lang]}</p></div></div>
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs"><span className="text-slate-500">{activeCases} {t("cases")} · {def.stages.length} {t("workflowProcess")}</span><span className="font-semibold text-emerald-700">{t("openModule")} →</span></div>
             </Link>;
