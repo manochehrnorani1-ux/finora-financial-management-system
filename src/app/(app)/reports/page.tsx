@@ -138,7 +138,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: SP }
       <PageHeader title={t("reports")} subtitle={`${t(LABEL[type])} · ${from ? formatDate(from, fmt) : ""} → ${to ? formatDate(to, fmt) : ""}`} actions={<>
         <a href={`/print/reports?${filterQS}`} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">{t("print")} / PDF</a>
         {canExport && <a href={`/api/reports/export?format=csv&${filterQS}`} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">{t("exportCsv")}</a>}
-        {canExport && <a href={`/api/reports/export?format=xls&${filterQS}`} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">{t("exportExcel")}</a>}
+        {canExport && <a href={`/api/reports/export?format=xlsx&${filterQS}`} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">{t("exportExcel")}</a>}
         <FormDialog title={t("savePreset")} triggerLabel={t("savePreset")} triggerVariant="secondary" action={saveReportPreset} hidden={{ reportType: type, filters: JSON.stringify(f) }} fields={[{ name: "name", label: t("name"), required: true, full: true }]} />
       </>} />
       <Card className="mb-4 print:hidden">
