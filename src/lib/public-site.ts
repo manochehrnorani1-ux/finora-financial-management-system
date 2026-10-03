@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
-import { officialResources, organizations, publicSites, services } from "@/db/schema";
+import { officialResources, organizations, publicSites, services, systemSettings } from "@/db/schema";
 import { ensureBootstrap } from "./seed";
 import { SITE_CONTENT } from "./website-seed";
 
@@ -18,7 +18,20 @@ export const getPublicWebsite = cache(async () => {
     .orderBy(organizations.createdAt)
     .limit(1);
   if (!row) return null;
-  return { ...row, content: (row.site.content as typeof SITE_CONTENT) ?? SITE_CONTENT };
+  const [contactSetting] = await db
+    .select({ value: systemSettings.value })
+    .from(systemSettings)
+    .where(and(eq(systemSettings.organizationId, row.org.id), eq(systemSettings.key, "contact_phones")))
+    .limit(1);
+  const rawPhones = (contactSetting?.value as { phones?: unknown } | null)?.phones;
+  const contactPhones = Array.isArray(rawPhones)
+    ? rawPhones.filter((phone): phone is string => typeof phone === "string" && phone.trim().length > 0)
+    : [];
+  return {
+    ...row,
+    content: (row.site.content as typeof SITE_CONTENT) ?? SITE_CONTENT,
+    contactPhones,
+  };
 });
 
 export async function getPublicOfferings(orgId: string) {
