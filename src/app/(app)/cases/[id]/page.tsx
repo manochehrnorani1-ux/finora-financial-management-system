@@ -124,6 +124,21 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           </div>
         </Card>
       )}
+      {c.workflowKey === "tax-settlement" && settlements.length === 0 && !["closed", "cancelled"].includes(c.status) && (
+        <Card title="پرداخت مالیاتی — نیاز به تصفیه دارد" className="mb-4 border-amber-300 bg-amber-50">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm leading-6 text-amber-950">
+              <strong>این دوسیه هنوز رکورد تصفیه مالیاتی ندارد.</strong>
+              <div>برای ثبت هرگونه پرداخت مالیاتی، ابتدا تصفیه مالیاتی همین دوسیه را ثبت و محاسبه کنید؛ سیستم پرداخت را بدون آن اجازه نمی‌دهد.</div>
+            </div>
+            {ctx.can("tax_settlements.write") && (
+              <Link href={`/tax-settlements?caseId=${c.id}`} className="shrink-0 rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white">
+                ثبت تصفیه این دوسیه →
+              </Link>
+            )}
+          </div>
+        </Card>
+      )}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card title={t("details")} className="lg:col-span-1">
           <KV items={[[t("caseNumber"), c.caseNumber], [t("customer"), <Link key="c" href={`/customer-accounts/${c.customerId}`} className="text-emerald-700">{record.customer.name}</Link>], [t("service"), record.service?.name ?? "-"], [t("openingDate"), formatCaseOpeningDate(c.openedAt, fmt)], [t("responsibleEmployee"), record.employee ?? "-"], [t("priority"), t(c.priority)], [t("caseFee"), <Money key="f" value={c.serviceFee} currency={c.feeCurrency} />], [t("discount"), <Money key="d" value={c.discountAmount} currency={c.feeCurrency} />], [t("feeStatus"), t(c.feeStatus)], [t("createdBy"), c.createdBy === ctx.user.id ? ctx.user.fullName : ""]]} />
