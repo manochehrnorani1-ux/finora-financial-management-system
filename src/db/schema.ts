@@ -744,6 +744,7 @@ export const customerAccounts = pgTable(
     customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
     currency: text("currency").notNull().default("AFN"),
     openingBalance: money("opening_balance"),
+    currentBalance: money("current_balance").notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("customer_accounts_unique").on(t.organizationId, t.customerId)],
