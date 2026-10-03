@@ -191,8 +191,20 @@ export async function customerBalances(orgId: string) {
       credit: sql<number>`coalesce(sum(${customerLedger.credit}),0)::numeric`,
     })
     .from(customers)
-    .leftJoin(customerAccounts, eq(customerAccounts.customerId, customers.id))
-    .leftJoin(customerLedger, eq(customerLedger.customerId, customers.id))
+    .leftJoin(
+      customerAccounts,
+      and(
+        eq(customerAccounts.customerId, customers.id),
+        eq(customerAccounts.organizationId, orgId),
+      ),
+    )
+    .leftJoin(
+      customerLedger,
+      and(
+        eq(customerLedger.customerId, customers.id),
+        eq(customerLedger.organizationId, orgId),
+      ),
+    )
     .where(eq(customers.organizationId, orgId))
     .groupBy(customers.id)
     .orderBy(customers.name);
