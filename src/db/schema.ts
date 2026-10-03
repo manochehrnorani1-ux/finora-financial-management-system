@@ -797,15 +797,6 @@ export const exchangeRates = pgTable("exchange_rates", {
   createdAt: createdAt(),
 });
 
-export const approvalRules = pgTable("approval_rules", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  entityType: text("entity_type").notNull(),
-  thresholdAmount: money("threshold_amount"),
-  requiredRole: text("required_role").notNull().default("manager"),
-  isActive: boolean("is_active").notNull().default(true),
-});
-
 export const counters = pgTable(
   "counters",
   {
