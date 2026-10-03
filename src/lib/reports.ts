@@ -378,6 +378,12 @@ export async function dashboardData(orgId: string, from: string, to: string) {
       ) as pending_expenses,
       (
         select count(*)::int
+        from cases c
+        where c.organization_id = ${orgId}
+          and c.status = 'awaiting_approval'
+      ) as pending_case_approvals,
+      (
+        select count(*)::int
         from documents d
         where d.organization_id = ${orgId}
           and d.status = 'under_review'
@@ -457,6 +463,7 @@ export async function dashboardData(orgId: string, from: string, to: string) {
     pending_docs?: number;
     pending_income?: number;
     pending_expenses?: number;
+    pending_case_approvals?: number;
     under_review_docs?: number;
     active_cases?: number;
     completed_cases?: number;
@@ -482,7 +489,8 @@ export async function dashboardData(orgId: string, from: string, to: string) {
     pendingApprovals:
       Number(row?.pending_income ?? 0) +
       Number(row?.pending_expenses ?? 0) +
-      Number(row?.under_review_docs ?? 0),
+      Number(row?.under_review_docs ?? 0) +
+      Number(row?.pending_case_approvals ?? 0),
     activeCases: Number(row?.active_cases ?? 0),
     completedCases: Number(row?.completed_cases ?? 0),
     missingCaseDocs: Number(row?.missing_case_docs ?? 0),
