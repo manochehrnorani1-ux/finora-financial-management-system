@@ -113,7 +113,7 @@ export async function createTaxSettlementAction(fd: FormData) {
     const deductions = round2(num(fd.get("deductions")));
     const monthsCount = Math.max(1, Math.round(num(fd.get("monthsCount"), 1)));
     const requestedRule = optStr(fd.get("ruleId"));
-    if (!customerId || !periodStart || !periodEnd || periodEnd < periodStart || [taxableAmount, allowableExpenses, exemptions, deductions].some((x) => x < 0)) throw new FinanceError("invalid_input");
+    if (!customerId || !caseId || !periodStart || !periodEnd || periodEnd < periodStart || [taxableAmount, allowableExpenses, exemptions, deductions].some((x) => x < 0)) throw new FinanceError("tax_settlement_case_required");
     return db.transaction(async (tx) => {
       const [customer] = await tx.select().from(customers).where(and(eq(customers.id, customerId), eq(customers.organizationId, ctx.org.id)));
       if (!customer) throw new FinanceError("customer_not_found");
