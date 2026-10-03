@@ -116,7 +116,6 @@ export function Shell({
   );
 
   const breadcrumbItem = [...PRIMARY_MENU, ...(canManageSystem ? SYSTEM_MENU : [])].find((m) => isActive(m));
-  const workflowKey = WORKFLOW_KEYS.find((key) => pathname === "/services-workflow/" + key);
 
   return (
     <div className="min-h-screen bg-slate-100 flex">
