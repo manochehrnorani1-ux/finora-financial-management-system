@@ -356,7 +356,7 @@ export async function completeCaseWorkflowStepAction(id: string) {
         .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id))).for("update");
       if (!row) throw new FinanceError("not_found");
 
-      if (row.workflowKey === "tax_settlement" && step.stepNo === 5) {
+      if (row.workflowKey === "tax-settlement" && step.stepNo === 5) {
         const settlements = await tx.select({
           id: taxSettlements.id, taxAmount: taxSettlements.taxAmount,
           paidAmount: taxSettlements.paidAmount, remainingAmount: taxSettlements.remainingAmount,
@@ -434,7 +434,7 @@ export async function recordCaseWorkflowPaymentAction(fd: FormData) {
       let paid = Number(step.paidAmount ?? 0);
       let settlementId: string | null = null;
 
-      if (row.workflowKey === "tax_settlement" && step.stepNo === 5) {
+      if (row.workflowKey === "tax-settlement" && step.stepNo === 5) {
         const settlements = await tx.select({
           id: taxSettlements.id, taxAmount: taxSettlements.taxAmount,
         }).from(taxSettlements)
