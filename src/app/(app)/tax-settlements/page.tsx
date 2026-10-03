@@ -45,7 +45,7 @@ export default async function TaxSettlementsPage({ searchParams }: { searchParam
       options: customersList.map((x) => ({ value: x.id, label: x.code + " — " + x.name })),
     },
     {
-      name: "caseId", label: t("case"), type: "select", defaultValue: caseId,
+      name: "caseId", label: "دوسیه مرتبط", type: "select", required: true, defaultValue: caseId,
       options: caseList.map((x) => ({ value: x.id, label: x.caseNumber })),
     },
     {
@@ -72,7 +72,7 @@ export default async function TaxSettlementsPage({ searchParams }: { searchParam
         title="تصفیه مالیه"
         subtitle="خدمت مالیاتی مشتری؛ از ثبت درخواست تا پرداخت و نتیجه"
         actions={ctx.can("tax_settlements.write") ? (
-          <FormDialog title="ثبت تصفیه مالیه" triggerLabel="+ ثبت تصفیه" action={createTaxSettlementAction} fields={fields} wide successPath="/tax-settlements/{id}" />
+          <FormDialog title="ثبت تصفیه مالیه برای دوسیه" triggerLabel="+ ثبت تصفیه" action={createTaxSettlementAction} fields={fields} wide successPath="/tax-settlements/{id}" />
         ) : undefined}
       />
 
