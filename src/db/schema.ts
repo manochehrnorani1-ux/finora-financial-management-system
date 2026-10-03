@@ -728,7 +728,9 @@ export const customerLedger = pgTable(
     createdBy: uuid("created_by"),
     createdAt: createdAt(),
   },
-  (t) => [index("customer_ledger_idx").on(t.customerId, t.transactionDate)],
+  (t) => [
+    index("customer_ledger_org_customer_date_idx").on(t.organizationId, t.customerId, t.transactionDate),
+  ],
 );
 
 /* ---------------- Tax ---------------- */
