@@ -79,7 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
           {WORKFLOW_KEYS.map((key) => {
             const def = WORKFLOW_SERVICES[key];
             const count = serviceCounts.get(key) ?? 0;
-            return <Link key={key} href={`/services-workflow/${key}`} className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-emerald-400 hover:shadow-sm">
+            return <Link key={key} href={`/cases?serviceKey=${key}`} className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-emerald-400 hover:shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div><h3 className="font-bold text-slate-900">{def.label[lang]}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{def.summary[lang]}</p></div>
                 <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">{count}</span>
