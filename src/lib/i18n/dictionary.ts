@@ -13,9 +13,9 @@ export const dirOf = (l: Lang): "rtl" | "ltr" => (l === "en" ? "ltr" : "rtl");
 // key: [Dari, Pashto, English]
 const D = {
   appName: ["فینورا", "فینورا", "FINORA"],
-  appTagline: ["سیستم مدیریت مالی و خدمات اداری افغانستان", "د افغانستان د مالي مدیریت او اداري خدماتو سیسټم", "Financial & Administrative Management System of Afghanistan"],
+  appTagline: ["مرکز خدمات مالی، مالیاتی و اداری مشتریان", "د پیرودونکو د مالي، مالیاتي او اداري خدمتونو مرکز", "Client Financial, Tax & Administrative Services Center"],
   // menus
-  dashboard: ["داشبورد", "ډشبورډ", "Dashboard"],
+  dashboard: ["مرکز خدمات", "د خدمتونو مرکز", "Service Center"],
   customers: ["مشتریان", "پیرودونکي", "Customers"],
   services: ["خدمات اداری", "اداري خدمات", "Administrative Services"],
   documents: ["اسناد و مکاتیب", "اسناد او مکتوبونه", "Documents"],
