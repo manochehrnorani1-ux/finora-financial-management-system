@@ -4,25 +4,40 @@ import { dashboardData } from "@/lib/reports";
 import { jalaliMonthRange, todayIso, formatDate, formatDateTime } from "@/lib/jalali";
 import type { Metadata } from "next";
 import { Badge, Card, Money, PageHeader, Stat, Table } from "@/components/ui";
+import { db } from "@/db";
+import { cases, customers } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import { WORKFLOW_KEYS, WORKFLOW_SERVICES } from "@/lib/case-workflow-definitions";
 
 export const metadata: Metadata = {
   title: "داشبورد مدیریت",
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: SP }) {
-  const { ctx, t, fmt } = await pageContext("dashboard.read");
+  const { ctx, t, fmt, lang } = await pageContext("dashboard.read");
   const q = await searchParams;
   const range = jalaliMonthRange(todayIso());
   const from = sp1(q.from) ?? range.start;
   const to = sp1(q.to) ?? range.end;
   const d = await dashboardData(ctx.org.id, from, to);
+  const [serviceCases, customerRows] = await Promise.all([
+    db.select({ workflowKey: cases.workflowKey, status: cases.status })
+      .from(cases)
+      .where(eq(cases.organizationId, ctx.org.id))
+      .orderBy(desc(cases.createdAt)),
+    db.select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.organizationId, ctx.org.id), eq(customers.status, "active"))),
+  ]);
+  const activeServiceCases = serviceCases.filter((x) => !["closed", "cancelled"].includes(x.status));
+  const serviceCounts = new Map(WORKFLOW_KEYS.map((key) => [key, serviceCases.filter((x) => x.workflowKey === key).length]));
   const cur = ctx.org.currency;
   return (
     <>
       {sp1(q.forbidden) && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{t("forbidden")}</div>}
       <PageHeader
-        title={t("dashboard")}
-        subtitle={`${t("overview")} — ${ctx.org.name} · ${formatDate(from, fmt)} → ${formatDate(to, fmt)}`}
+        title="مرکز خدمات FINORA"
+        subtitle={`ارائه و مدیریت خدمات مشتریان از درخواست تا نتیجه · ${ctx.org.name}`}
         actions={
           <form method="get" className="flex items-center gap-2 text-xs">
             <input type="date" name="from" defaultValue={from} className="input !w-auto" />
@@ -37,8 +52,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { href: "/cases", label: t("cases"), icon: "📁", perm: "cases.read", badge: d.activeCases },
-            { href: "/customers", label: t("customers"), icon: "👥", perm: "customers.read" },
+            { href: "/cases", label: "خدمات مشتریان", icon: "📁", perm: "cases.read", badge: d.activeCases },
+            { href: "/customers", label: "مشتریان", icon: "👥", perm: "customers.read" },
+            { href: "/panel/services", label: "فهرست خدمات", icon: "🗂", perm: "services.read" },
             { href: "/documents-center", label: t("documentsCenter"), icon: "📄", perm: "documents.read", badge: d.pendingDocs },
             { href: "/finance-center", label: t("financeCenter"), icon: "💼", perm: "income.read" },
             { href: "/tax-settlements", label: t("taxSettlementGroup"), icon: "⚖", perm: "tax_settlements.read", badge: d.taxNeedsReview },
@@ -52,21 +68,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat label="خدمات در جریان" value={activeServiceCases.length} tone="blue" />
+        <Stat label="خدمات تکمیل‌شده" value={d.completedCases} tone="green" />
+        <Stat label="خدمات منتظر اسناد" value={d.missingCaseDocs} tone="amber" />
+        <Stat label="مشتریان فعال" value={customerRows.length} tone="blue" />
+      </div>
+      <Card title="خدمات اصلی FINORA" className="mb-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {WORKFLOW_KEYS.map((key) => {
+            const def = WORKFLOW_SERVICES[key];
+            const count = serviceCounts.get(key) ?? 0;
+            return <Link key={key} href={`/services-workflow/${key}`} className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-emerald-400 hover:shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div><h3 className="font-bold text-slate-900">{def.label[lang]}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{def.summary[lang]}</p></div>
+                <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">{count}</span>
+              </div>
+              <div className="mt-3 text-xs font-semibold text-emerald-700">مشاهده و اجرای خدمت ←</div>
+            </Link>;
+          })}
+        </div>
+      </Card>
+      <div className="mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label={t("totalIncome")} value={<Money value={d.totalIncome} currency={cur} />} tone="green" />
         <Stat label={t("totalExpenses")} value={<Money value={d.totalExpenses} currency={cur} />} tone="red" />
         <Stat label={t("netProfit")} value={<Money value={d.netProfit} currency={cur} colored />} tone={d.netProfit >= 0 ? "green" : "red"} sub={t("profitLoss")} />
         <Stat label={t("taxesCollected")} value={<Money value={d.taxes} currency={cur} />} tone="amber" />
-        <Stat label={t("cashBalance")} value={<Money value={d.cashBalance} currency={cur} />} tone="blue" />
-        <Stat label={t("bankBalance")} value={<Money value={d.bankBalance} currency={cur} />} tone="blue" />
-        <Stat label={t("receivables")} value={<Money value={d.receivables} currency={cur} />} />
-        <Stat label={t("pendingApprovals")} value={d.pendingApprovals} sub={`${t("pendingDocuments")}: ${d.pendingDocs}`} tone="amber" />
-        <Stat label={t("activeCases")} value={d.activeCases} tone="blue" />
-        <Stat label={t("completedCases")} value={d.completedCases} tone="green" />
-        <Stat label={t("missingDocuments")} value={d.missingCaseDocs} tone="amber" />
-        <Stat label={t("feeTotal")} value={<Money value={d.serviceFeeTotal} currency={cur} />} />
-        <Stat label={t("remainingAmount")} value={<Money value={d.serviceFeeRemaining} currency={cur} />} tone="amber" />
-        <Stat label={t("requiresLegalReview")} value={d.taxNeedsReview} tone="amber" />
       </div>
       <div className="grid lg:grid-cols-3 gap-4">
         <Card title={t("recentTransactions")} className="lg:col-span-2" actions={<Link href="/transactions" className="text-sm text-emerald-700">{t("all")} →</Link>}>
