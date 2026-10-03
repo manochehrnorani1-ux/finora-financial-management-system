@@ -411,27 +411,10 @@ export async function ledgerEntry(
       .values({ organizationId: p.orgId, customerId: p.customerId, currency: p.currency, openingBalance: 0 })
       .returning();
   }
-  const [{ sum }] = await tx
-    .select({ sum: sql<number>`coalesce(sum(${customerLedger.debit} - ${customerLedger.credit}), 0)::numeric` })
-    .from(customerLedger)
-    .where(and(eq(customerLedger.organizationId, p.orgId), eq(customerLedger.customerId, p.customerId)));
-  const balance = round2(Number(acct.openingBalance) + Number(sum) + round2(p.debit) - round2(p.credit));
-  const [row] = await tx
-    .insert(customerLedger)
-    .values({
-      organizationId: p.orgId,
-      customerId: p.customerId,
-      referenceType: p.referenceType,
-      referenceId: p.referenceId,
-      description: p.description ?? null,
-      debit: round2(p.debit),
-      credit: round2(p.credit),
-      balance,
-      currency: p.currency,
-      transactionDate: p.date ?? new Date(),
-      createdBy: p.userId,
-    })
-    .returning();
+  // The customer account row is locked above, so currentBalance is the canonical running balance.
+  // Avoid re-summing the full customer ledger for every posting.
+  const before = round2(Number(acct.currentBalance ?? acct.openingBalance ?? 0));
+  const balance = round2(before + round2(p.debit) - round2(p.credit));
   return row;
 }
 
@@ -485,6 +468,7 @@ export async function recordTransaction(
       isDemo: p.isDemo ?? false,
     })
     .returning();
+  await tx.update(customerAccounts).set({ currentBalance: balance }).where(eq(customerAccounts.id, acct.id));
   return row;
 }
 
