@@ -42,6 +42,7 @@ export default async function PublicHomePage() {
             <p className="mt-4 max-w-2xl text-sm leading-8 text-slate-400 sm:text-base">{t("publicIntro")}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/services" className="rounded-xl bg-emerald-500 px-6 py-3.5 text-sm font-black text-slate-950 shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-400">{t("publicServices")} <span className="ms-1">←</span></Link>
+              <Link href="/login" className="rounded-xl border border-emerald-300/40 bg-emerald-400/10 px-6 py-3.5 text-sm font-black text-emerald-100 transition hover:bg-emerald-400/20">🔐 {t("adminLogin")}</Link>
               {phone && <a href={`tel:${cleanPhone}`} className="rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-sm font-bold transition hover:bg-white/10">☎ {t("urgentCall")}</a>}
               <Link href="/contact" className="rounded-xl border border-white/20 px-6 py-3.5 text-sm font-bold transition hover:bg-white/10">{t("contact")}</Link>
             </div>
