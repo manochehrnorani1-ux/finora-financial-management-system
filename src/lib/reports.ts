@@ -290,48 +290,211 @@ export async function auditReport(orgId: string, f: ReportFilters) {
 }
 
 export async function dashboardData(orgId: string, from: string, to: string) {
-  const [inc, exp, pl, cash, bank, custBal, tax, docs, pendingInc, pendingExp, recentTx, recentDocs, caseRows, receiptTotal, taxReviewRows] = await Promise.all([
-    incomeReport(orgId, { from, to }),
-    expenseReport(orgId, { from, to }),
-    profitLoss(orgId, { from, to }),
-    db.select().from(cashAccounts).where(eq(cashAccounts.organizationId, orgId)),
-    db.select().from(bankAccounts).where(eq(bankAccounts.organizationId, orgId)),
-    customerBalances(orgId),
-    taxReport(orgId, { from, to }),
-    db.select({ status: documents.status, n: sql<number>`count(*)::int` }).from(documents).where(eq(documents.organizationId, orgId)).groupBy(documents.status),
-    db.select({ n: sql<number>`count(*)::int` }).from(incomes).where(and(eq(incomes.organizationId, orgId), eq(incomes.status, "pending_approval"))),
-    db.select({ n: sql<number>`count(*)::int` }).from(expenses).where(and(eq(expenses.organizationId, orgId), eq(expenses.status, "pending_approval"))),
-    db.select().from(transactions).where(eq(transactions.organizationId, orgId)).orderBy(desc(transactions.transactionDate), desc(transactions.createdAt)).limit(8),
-    db.select({ d: documents, customer: customers.name }).from(documents).leftJoin(customers, eq(documents.customerId, customers.id)).where(eq(documents.organizationId, orgId)).orderBy(desc(documents.createdAt)).limit(6),
-    db.select({ status: cases.status, serviceFee: cases.serviceFee, discountAmount: cases.discountAmount }).from(cases).where(eq(cases.organizationId, orgId)),
-    db.select({ paid: sql<number>`coalesce(sum(${serviceFeeReceipts.paidAmount}),0)::numeric` }).from(serviceFeeReceipts).where(eq(serviceFeeReceipts.organizationId, orgId)),
-    db.select({ n: sql<number>`count(*)::int` }).from(taxSettlements).where(and(eq(taxSettlements.organizationId, orgId), eq(taxSettlements.status, "REQUIRES_LEGAL_REVIEW"))),
-  ]);
-  const pendingDocs = docs.filter((d) => ["submitted", "under_review"].includes(d.status)).reduce((s, d) => s + d.n, 0);
-  const activeCases = caseRows.filter((c) => !["closed", "cancelled"].includes(c.status)).length;
-  const completedCases = caseRows.filter((c) => c.status === "closed" || c.status === "delivered").length;
-  const missingCaseDocs = caseRows.filter((c) => c.status === "missing_documents").length;
-  const feeTotal = round2(caseRows.filter((c) => c.status !== "cancelled").reduce((s, c) => s + Number(c.serviceFee) - Number(c.discountAmount), 0));
-  const feePaid = Number(receiptTotal[0]?.paid ?? 0);
+  // Dashboard is a hot path. Keep the number of DB round-trips low and aggregate
+  // on PostgreSQL instead of transferring whole report datasets to the serverless
+  // function and reducing them in Node.js.
+  const metricsResult = await db.execute(sql`
+    select
+      (
+        select coalesce(sum(i.base_amount), 0)::numeric
+        from incomes i
+        where i.organization_id = ${orgId}
+          and i.income_date >= ${from}
+          and i.income_date <= ${to}
+          and i.status = 'finalized'
+      ) as total_income,
+      (
+        select coalesce(sum(e.base_amount), 0)::numeric
+        from expenses e
+        where e.organization_id = ${orgId}
+          and e.expense_date >= ${from}
+          and e.expense_date <= ${to}
+          and e.status = 'finalized'
+      ) as total_expenses,
+      (
+        select coalesce(sum(
+          case
+            when a.account_type = 'income' then jel.credit - jel.debit
+            when a.account_type = 'expense' then jel.debit - jel.credit
+            else 0
+          end
+        ), 0)::numeric
+        from journal_entry_lines jel
+        inner join journal_entries je on je.id = jel.journal_entry_id
+        inner join accounts a on a.id = jel.account_id
+        where je.organization_id = ${orgId}
+          and je.status = 'posted'
+          and je.entry_date >= ${from}
+          and je.entry_date <= ${to}
+      ) as net_profit,
+      (
+        select coalesce(sum(ca.current_balance), 0)::numeric
+        from cash_accounts ca
+        where ca.organization_id = ${orgId}
+      ) as cash_balance,
+      (
+        select coalesce(sum(ba.current_balance), 0)::numeric
+        from bank_accounts ba
+        where ba.organization_id = ${orgId}
+      ) as bank_balance,
+      (
+        select coalesce(sum(greatest(coalesce(x.opening, 0) + coalesce(x.debit, 0) - coalesce(x.credit, 0), 0)), 0)::numeric
+        from (
+          select
+            c.id,
+            max(coalesce(ca.opening_balance, 0)) as opening,
+            coalesce((select sum(cl.debit) from customer_ledger cl where cl.customer_id = c.id and cl.organization_id = ${orgId}), 0) as debit,
+            coalesce((select sum(cl.credit) from customer_ledger cl where cl.customer_id = c.id and cl.organization_id = ${orgId}), 0) as credit
+          from customers c
+          left join customer_accounts ca on ca.customer_id = c.id
+          where c.organization_id = ${orgId}
+          group by c.id
+        ) x
+      ) as receivables,
+      (
+        select coalesce(sum(tr.base_tax_amount), 0)::numeric
+        from tax_records tr
+        where tr.organization_id = ${orgId}
+          and tr.record_date >= ${from}
+          and tr.record_date <= ${to}
+      ) as taxes,
+      (
+        select count(*)::int
+        from documents d
+        where d.organization_id = ${orgId}
+          and d.status in ('submitted', 'under_review')
+      ) as pending_docs,
+      (
+        select count(*)::int
+        from incomes i
+        where i.organization_id = ${orgId}
+          and i.status = 'pending_approval'
+      ) as pending_income,
+      (
+        select count(*)::int
+        from expenses e
+        where e.organization_id = ${orgId}
+          and e.status = 'pending_approval'
+      ) as pending_expenses,
+      (
+        select count(*)::int
+        from documents d
+        where d.organization_id = ${orgId}
+          and d.status = 'under_review'
+      ) as under_review_docs,
+      (
+        select count(*)::int
+        from cases c
+        where c.organization_id = ${orgId}
+          and c.status not in ('closed', 'cancelled')
+      ) as active_cases,
+      (
+        select count(*)::int
+        from cases c
+        where c.organization_id = ${orgId}
+          and c.status in ('closed', 'delivered')
+      ) as completed_cases,
+      (
+        select count(*)::int
+        from cases c
+        where c.organization_id = ${orgId}
+          and c.status = 'missing_documents'
+      ) as missing_case_docs,
+      (
+        select coalesce(sum(c.service_fee - c.discount_amount), 0)::numeric
+        from cases c
+        where c.organization_id = ${orgId}
+          and c.status <> 'cancelled'
+      ) as service_fee_total,
+      (
+        select coalesce(sum(sfr.paid_amount), 0)::numeric
+        from service_fee_receipts sfr
+        where sfr.organization_id = ${orgId}
+      ) as service_fee_paid,
+      (
+        select count(*)::int
+        from tax_settlements ts
+        where ts.organization_id = ${orgId}
+          and ts.status = 'REQUIRES_LEGAL_REVIEW'
+      ) as tax_needs_review,
+      (
+        select coalesce(jsonb_object_agg(e.category, e.total), '{}'::jsonb)
+        from (
+          select e.category, coalesce(sum(e.base_amount), 0)::numeric as total
+          from expenses e
+          where e.organization_id = ${orgId}
+            and e.expense_date >= ${from}
+            and e.expense_date <= ${to}
+            and e.status = 'finalized'
+          group by e.category
+        ) e
+      ) as by_category
+  `);
+
+  const recentTxResult = await db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.organizationId, orgId))
+    .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
+    .limit(8);
+
+  const recentDocs = await db
+    .select({ d: documents, customer: customers.name })
+    .from(documents)
+    .leftJoin(customers, eq(documents.customerId, customers.id))
+    .where(eq(documents.organizationId, orgId))
+    .orderBy(desc(documents.createdAt))
+    .limit(6);
+
+  const row = metricsResult.rows[0] as {
+    total_income?: number | string;
+    total_expenses?: number | string;
+    net_profit?: number | string;
+    cash_balance?: number | string;
+    bank_balance?: number | string;
+    receivables?: number | string;
+    taxes?: number | string;
+    pending_docs?: number;
+    pending_income?: number;
+    pending_expenses?: number;
+    under_review_docs?: number;
+    active_cases?: number;
+    completed_cases?: number;
+    missing_case_docs?: number;
+    service_fee_total?: number | string;
+    service_fee_paid?: number | string;
+    tax_needs_review?: number;
+    by_category?: Record<string, string | number>;
+  } | undefined;
+
+  const feeTotal = Number(row?.service_fee_total ?? 0);
+  const feePaid = Number(row?.service_fee_paid ?? 0);
+
   return {
-    totalIncome: inc.total,
-    totalExpenses: exp.total,
-    netProfit: pl.net,
-    cashBalance: round2(cash.reduce((s, a) => s + Number(a.currentBalance), 0)),
-    bankBalance: round2(bank.reduce((s, a) => s + Number(a.currentBalance), 0)),
-    receivables: round2(custBal.filter((c) => c.balance > 0).reduce((s, c) => s + c.balance, 0)),
-    taxes: tax.total,
-    pendingDocs,
-    pendingApprovals: pendingInc[0].n + pendingExp[0].n + docs.filter((d) => d.status === "under_review").reduce((s, d) => s + d.n, 0) + caseRows.filter((c) => c.status === "awaiting_approval").length,
-    activeCases,
-    completedCases,
-    missingCaseDocs,
-    serviceFeeTotal: feeTotal,
+    totalIncome: round2(Number(row?.total_income ?? 0)),
+    totalExpenses: round2(Number(row?.total_expenses ?? 0)),
+    netProfit: round2(Number(row?.net_profit ?? 0)),
+    cashBalance: round2(Number(row?.cash_balance ?? 0)),
+    bankBalance: round2(Number(row?.bank_balance ?? 0)),
+    receivables: round2(Number(row?.receivables ?? 0)),
+    taxes: round2(Number(row?.taxes ?? 0)),
+    pendingDocs: Number(row?.pending_docs ?? 0),
+    pendingApprovals:
+      Number(row?.pending_income ?? 0) +
+      Number(row?.pending_expenses ?? 0) +
+      Number(row?.under_review_docs ?? 0),
+    activeCases: Number(row?.active_cases ?? 0),
+    completedCases: Number(row?.completed_cases ?? 0),
+    missingCaseDocs: Number(row?.missing_case_docs ?? 0),
+    serviceFeeTotal: round2(feeTotal),
     serviceFeePaid: round2(feePaid),
     serviceFeeRemaining: round2(Math.max(0, feeTotal - feePaid)),
-    taxNeedsReview: taxReviewRows[0]?.n ?? 0,
-    recentTx,
+    taxNeedsReview: Number(row?.tax_needs_review ?? 0),
+    recentTx: recentTxResult,
     recentDocs,
-    byCategory: exp.byCategory,
+    byCategory: Object.fromEntries(
+      Object.entries(row?.by_category ?? {}).map(([key, value]) => [key, round2(Number(value))]),
+    ),
   };
 }
+
