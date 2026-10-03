@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import ExcelJS from "exceljs";
 import { getContext } from "@/lib/auth";
 import { auditReport, bankReport, cashReport, caseReport, complianceReport, customerLedgerReport, expenseReport, incomeReport, profitLoss, serviceFeeReport, taxReport, taxSettlementReport, transactionReport, trialBalance } from "@/lib/reports";
 import { audit } from "@/lib/finance";
@@ -25,12 +26,36 @@ function toXls(rows: Row[], title: string) {
   return `<html><head><meta charset="utf-8"></head><body><h3>${esc(title)}</h3><table border="1"><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>${rows.map((r) => `<tr>${cols.map((c) => `<td>${esc(r[c])}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
 }
 
+async function toXlsx(rows: Row[], title: string) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "FINORA";
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet("FINORA");
+  const cols = rows.length ? Object.keys(rows[0]) : [];
+  sheet.addRow([title]);
+  sheet.mergeCells(1, 1, 1, Math.max(1, cols.length));
+  sheet.getRow(1).font = { bold: true, size: 14 };
+  if (cols.length) {
+    const header = sheet.addRow(cols);
+    header.font = { bold: true };
+    header.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+    for (const row of rows) sheet.addRow(cols.map((col) => row[col] ?? ""));
+  }
+  sheet.views = [{ state: "frozen", ySplit: cols.length ? 2 : 1 }];
+  sheet.columns.forEach((column) => {
+    let width = 12;
+    column.eachCell({ includeEmpty: false }, (cell) => { width = Math.max(width, Math.min(40, String(cell.value ?? "").length + 2)); });
+    column.width = width;
+  });
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
 export async function GET(req: NextRequest) {
   const ctx = await getContext();
   if (!ctx || !ctx.can("reports.export")) return new Response("Forbidden", { status: 403 });
   const sp = req.nextUrl.searchParams;
   const type = sp.get("type") ?? "transactions";
-  const format = sp.get("format") === "xls" ? "xls" : "csv";
+  const requestedFormat = sp.get("format");
+  const format = requestedFormat === "xlsx" || requestedFormat === "xls" ? requestedFormat : "csv";
   const f = { from: sp.get("from") ?? undefined, to: sp.get("to") ?? undefined, customerId: sp.get("customerId") ?? undefined, caseId: sp.get("caseId") ?? undefined, serviceId: sp.get("serviceId") ?? undefined, paymentMethod: sp.get("paymentMethod") ?? undefined, currency: sp.get("currency") ?? undefined, status: sp.get("status") ?? undefined, userId: sp.get("userId") ?? undefined, accountId: sp.get("accountId") ?? undefined };
   const orgId = ctx.org.id;
   let rows: Row[] = [];
@@ -52,6 +77,6 @@ export async function GET(req: NextRequest) {
   }
   await audit(db, { orgId, userId: ctx.user.id, action: "EXPORT", entityType: "report", newData: { type, format, filters: f } });
   const name = `finora-${type}-${new Date().toISOString().slice(0, 10)}.${format}`;
-  const body = format === "xls" ? toXls(rows, `${ctx.org.name} — ${type}`) : toCsv(rows);
-  return new Response(body, { headers: { "Content-Type": format === "xls" ? "application/vnd.ms-excel; charset=utf-8" : "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}"` } });
+  const body = format === "xlsx" ? await toXlsx(rows, `${ctx.org.name} — ${type}`) : format === "xls" ? toXls(rows, `${ctx.org.name} — ${type}`) : toCsv(rows);
+  return new Response(body, { headers: { "Content-Type": format === "xlsx" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : format === "xls" ? "application/vnd.ms-excel; charset=utf-8" : "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}"` } });
 }
