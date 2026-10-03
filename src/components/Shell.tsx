@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { LANGS } from "@/lib/i18n/dictionary";
 import { logoutAction, setLanguageAction, switchOrganizationAction } from "@/actions/auth";
 import type { NavCounts } from "@/lib/nav-counts";
-import { WORKFLOW_KEYS, WORKFLOW_SERVICES } from "@/lib/case-workflow-definitions";
+
 import { canAccessSystemManagement, type RoleKey } from "@/lib/permissions";
 import { Toaster } from "./forms";
 
@@ -23,7 +23,7 @@ export const PRIMARY_MENU: MenuItem[] = [
   { key: "dashboard", href: "/dashboard", icon: "▦", perms: ["dashboard.read"] },
   { key: "cases", href: "/cases", icon: "📁", perms: ["cases.read"], badge: "cases" },
   { key: "customers", href: "/customers", icon: "👥", perms: ["customers.read"] },
-  { key: "services", href: "/panel/services", icon: "🗂", perms: ["services.read"], routes: ["/services-workflow"] },
+  { key: "services", href: "/panel/services", icon: "🗂", perms: ["services.read"] },
   { key: "documentsCenter", href: "/documents-center", icon: "📄", perms: ["documents.read", "official_forms.read", "letters.read", "compliance.read"], badge: "documents", routes: ["/documents", "/official-forms", "/generated-forms", "/letters", "/compliance"] },
   { key: "financeCenter", href: "/finance-center", icon: "💼", perms: ["income.read", "expenses.read", "transactions.read", "cash.read", "bank.read", "accounting.read", "contracts.read"], badge: "approvals", routes: ["/income", "/expenses", "/transactions", "/cash", "/bank", "/customer-accounts", "/accounting", "/contracts", "/receipts"] },
   { key: "taxSettlementGroup", href: "/tax-settlements", icon: "⚖", perms: ["tax_settlements.read", "tax_rules.read", "taxes.read"], badge: "taxReview", routes: ["/tax-returns", "/tax-engine", "/taxes"] },
@@ -36,8 +36,6 @@ export const SYSTEM_MENU: MenuItem[] = [
   { key: "usersRoles", href: "/users#roles", icon: "👤", perms: ["users.read"] },
   { key: "systemOrgSettings", href: "/settings#organization", icon: "🏢", perms: ["settings.read"] },
   { key: "systemGeneralSettings", href: "/settings#general", icon: "⚙", perms: ["settings.read"] },
-  { key: "systemLanguage", href: "/settings#preferences", icon: "🌐", perms: ["settings.read"] },
-  { key: "systemFiles", href: "/documents-center", icon: "📎", perms: ["documents.read"] },
   { key: "auditLog", href: "/audit", icon: "🧾", perms: ["audit.read"] },
   { key: "backupRestore", href: "/backup", icon: "🗄", perms: ["backup.manage"] },
   { key: "systemSecurity", href: "/settings#security", icon: "🛡", perms: ["settings.manage"] },
@@ -61,7 +59,6 @@ export function Shell({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(false);
-  const [servicesExpanded, setServicesExpanded] = useState(pathname.startsWith("/services-workflow"));
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [, start] = useTransition();
   const allowed = useMemo(() => new Set(perms), [perms]);
@@ -81,26 +78,17 @@ export function Shell({
   const renderItem = (item: MenuItem) => {
     const active = isActive(item);
     const badge = badgeValue(item.badge);
-    const isService = item.key === "services";
     return (
       <div key={item.key}>
         <div className="flex items-center gap-1">
-          <Link href={item.href} onClick={() => { if (isService) setServicesExpanded(true); navigate(); }} title={collapsed ? t(item.key) : undefined}
+          <Link href={item.href} onClick={navigate} title={collapsed ? t(item.key) : undefined}
             className={"group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition " + (active ? "border-e-4 border-emerald-400 bg-emerald-600/20 font-semibold text-white" : "text-slate-300 hover:bg-white/5 hover:text-white")}>
             <span className="w-5 shrink-0 text-center text-base">{item.icon}</span>
             {!collapsed && <><span className="flex-1 truncate">{t(item.key)}</span>{badge > 0 && <span className="min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white">{badge}</span>}</>}
           </Link>
-          {isService && !collapsed && <button type="button" onClick={() => setServicesExpanded((v) => !v)} aria-expanded={servicesExpanded} className="rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/10 hover:text-white">{servicesExpanded ? "▾" : "▸"}</button>}
+
         </div>
-        {isService && !collapsed && servicesExpanded && (
-          <div className="my-1 ms-5 space-y-0.5 border-s border-white/10 ps-2">
-            {WORKFLOW_KEYS.map((key) => {
-              const href = "/services-workflow/" + key;
-              const active = pathname === href;
-              return <Link key={key} href={href} onClick={navigate} className={"block rounded-md px-2 py-1.5 text-xs transition " + (active ? "bg-emerald-700/40 font-semibold text-white" : "text-slate-400 hover:bg-white/5 hover:text-white")}>{WORKFLOW_SERVICES[key].label[lang]}</Link>;
-            })}
-          </div>
-        )}
+
       </div>
     );
   };
@@ -190,7 +178,7 @@ export function Shell({
           <div className="mx-auto flex max-w-[1600px] items-center gap-1 overflow-x-auto whitespace-nowrap">
             <Link href="/dashboard" className="hover:text-emerald-700">{t("dashboard")}</Link>
             {breadcrumbItem && breadcrumbItem.key !== "dashboard" && <><span>/</span><span className="font-medium text-slate-700">{t(breadcrumbItem.key)}</span></>}
-            {workflowKey && <><span>/</span><span className="font-medium text-slate-700">{WORKFLOW_SERVICES[workflowKey].label[lang]}</span></>}
+
           </div>
         </div>
         <main className="mx-auto w-full max-w-[1600px] flex-1 p-3 sm:p-5 lg:p-6">{children}</main>
