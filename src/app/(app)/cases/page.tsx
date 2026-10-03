@@ -4,7 +4,7 @@ import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { caseWorkflowSteps, cases, customers, organizationMembers, profiles, services } from "@/db/schema";
 import { pageContext, sp1, type SP } from "@/lib/page";
-import { WORKFLOW_KEYS, WORKFLOW_SERVICES, WORKFLOW_STAGES, isWorkflowKey } from "@/lib/case-workflow-definitions";
+import { WORKFLOW_KEYS, WORKFLOW_SERVICES, isWorkflowKey } from "@/lib/case-workflow-definitions";
 import { saveCase } from "@/actions/master";
 import { Badge, Card, Money, PageHeader, Stat, Table } from "@/components/ui";
 import { FormDialog, type Field } from "@/components/forms";
