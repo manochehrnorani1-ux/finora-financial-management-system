@@ -6,7 +6,7 @@ on:
       base_url:
         description: "FINORA deployment URL"
         required: false
-        default: "https://finora-financial-tau.vercel.app"
+        default: "https://finora-financial-norani.vercel.app"
         type: string
 
 jobs:
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      E2E_BASE_URL: ${{ inputs.base_url || 'https://finora-financial-tau.vercel.app' }}
+      E2E_BASE_URL: ${{ inputs.base_url || 'https://finora-financial-norani.vercel.app' }}
       E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
       E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
       E2E_MANAGER_EMAIL: ${{ secrets.E2E_MANAGER_EMAIL }}
