@@ -311,13 +311,9 @@ export async function cashMove(
     .where(and(eq(cashAccounts.id, p.cashAccountId), eq(cashAccounts.organizationId, p.orgId)))
     .for("update");
   if (!acc || !acc.isActive) throw new FinanceError("cash_account_not_found");
-  const [{ sum }] = await tx
-    .select({
-      sum: sql<number>`coalesce(sum(case when ${cashTransactions.direction} = 'in' then ${cashTransactions.amount} else -${cashTransactions.amount} end), 0)::numeric`,
-    })
-    .from(cashTransactions)
-    .where(eq(cashTransactions.cashAccountId, acc.id));
-  const before = round2(Number(acc.openingBalance) + Number(sum));
+  // The account row is locked above, so currentBalance is the canonical running balance.
+  // Avoid re-summing the full transaction history on every operation.
+  const before = round2(Number(acc.currentBalance ?? acc.openingBalance ?? 0));
   const after = round2(p.direction === "in" ? before + amount : before - amount);
   if (after < 0) throw new FinanceError("insufficient_funds");
   const [row] = await tx
@@ -363,13 +359,9 @@ export async function bankMove(
     .where(and(eq(bankAccounts.id, p.bankAccountId), eq(bankAccounts.organizationId, p.orgId)))
     .for("update");
   if (!acc || !acc.isActive) throw new FinanceError("bank_account_not_found");
-  const [{ sum }] = await tx
-    .select({
-      sum: sql<number>`coalesce(sum(case when ${bankTransactions.direction} = 'in' then ${bankTransactions.amount} else -${bankTransactions.amount} end), 0)::numeric`,
-    })
-    .from(bankTransactions)
-    .where(eq(bankTransactions.bankAccountId, acc.id));
-  const before = round2(Number(acc.openingBalance) + Number(sum));
+  // The account row is locked above, so currentBalance is the canonical running balance.
+  // Avoid re-summing the full transaction history on every operation.
+  const before = round2(Number(acc.currentBalance ?? acc.openingBalance ?? 0));
   const after = round2(p.direction === "in" ? before + amount : before - amount);
   if (after < 0) throw new FinanceError("insufficient_funds");
   const [row] = await tx
@@ -422,7 +414,7 @@ export async function ledgerEntry(
   const [{ sum }] = await tx
     .select({ sum: sql<number>`coalesce(sum(${customerLedger.debit} - ${customerLedger.credit}), 0)::numeric` })
     .from(customerLedger)
-    .where(eq(customerLedger.customerId, p.customerId));
+    .where(and(eq(customerLedger.organizationId, p.orgId), eq(customerLedger.customerId, p.customerId)));
   const balance = round2(Number(acct.openingBalance) + Number(sum) + round2(p.debit) - round2(p.credit));
   const [row] = await tx
     .insert(customerLedger)
