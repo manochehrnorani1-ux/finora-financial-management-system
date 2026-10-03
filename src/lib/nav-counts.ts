@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { cases, documents, expenses, incomes, taxSettlements } from "@/db/schema";
 
@@ -13,50 +13,54 @@ export interface NavCounts {
 
 /** Live attention counters for the navigation menu, scoped to the active organization. */
 export async function getNavCounts(orgId: string): Promise<NavCounts> {
-  // One round-trip instead of five concurrent queries. This matters on serverless
-  // deployments because the authenticated app layout executes this on every page.
-  const result = await db
-    .select({
-      cases: sql<number>`(
+  // Keep this as one round-trip with no base table scan. Each counter is an
+  // independent scoped aggregate, which is cheaper than using cases as a dummy FROM.
+  const result = await db.execute(sql`
+    select
+      (
         select count(*)::int
         from ${cases} c
         where c.organization_id = ${orgId}
           and c.status in ('new', 'missing_documents', 'awaiting_approval')
-      )`,
-      documents: sql<number>`(
+      ) as cases,
+      (
         select count(*)::int
         from ${documents} d
         where d.organization_id = ${orgId}
           and d.status in ('submitted', 'under_review')
-      )`,
-      incomeApprovals: sql<number>`(
+      ) as documents,
+      (
         select count(*)::int
         from ${incomes} i
         where i.organization_id = ${orgId}
           and i.status = 'pending_approval'
-      )`,
-      expenseApprovals: sql<number>`(
+      ) as income_approvals,
+      (
         select count(*)::int
         from ${expenses} e
         where e.organization_id = ${orgId}
           and e.status = 'pending_approval'
-      )`,
-      taxReview: sql<number>`(
+      ) as expense_approvals,
+      (
         select count(*)::int
         from ${taxSettlements} t
         where t.organization_id = ${orgId}
           and t.status = 'REQUIRES_LEGAL_REVIEW'
-      )`,
-    })
-    .from(cases)
-    .where(eq(cases.organizationId, orgId))
-    .limit(1);
+      ) as tax_review
+  `);
 
-  const row = result[0];
+  const row = result.rows[0] as {
+    cases?: number;
+    documents?: number;
+    income_approvals?: number;
+    expense_approvals?: number;
+    tax_review?: number;
+  } | undefined;
+
   const casesCount = Number(row?.cases ?? 0);
   const documentsCount = Number(row?.documents ?? 0);
-  const approvals = Number(row?.incomeApprovals ?? 0) + Number(row?.expenseApprovals ?? 0);
-  const taxReview = Number(row?.taxReview ?? 0);
+  const approvals = Number(row?.income_approvals ?? 0) + Number(row?.expense_approvals ?? 0);
+  const taxReview = Number(row?.tax_review ?? 0);
 
   return {
     cases: casesCount,
