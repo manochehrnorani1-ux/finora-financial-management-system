@@ -564,7 +564,10 @@ export const journalEntryLines = pgTable(
     credit: money("credit"),
     currency: text("currency").notNull().default("AFN"),
   },
-  (t) => [index("jel_entry_idx").on(t.journalEntryId), index("jel_account_idx").on(t.accountId)],
+  (t) => [
+    index("jel_entry_org_idx").on(t.organizationId, t.journalEntryId),
+    index("jel_account_idx").on(t.accountId),
+  ],
 );
 
 /* ---------------- Income / Expense / Transactions ---------------- */
