@@ -224,6 +224,13 @@ export async function recordTaxSettlementPaymentAction(fd: FormData) {
     return db.transaction(async (tx) => {
       const [row] = await tx.select().from(taxSettlements).where(and(eq(taxSettlements.id, id), eq(taxSettlements.organizationId, ctx.org.id))).for("update");
       if (!row) throw new FinanceError("not_found");
+      if (!row.caseId) throw new FinanceError("tax_settlement_case_required");
+      const [kase] = await tx.select({ id: cases.id }).from(cases).where(and(
+        eq(cases.id, row.caseId),
+        eq(cases.organizationId, ctx.org.id),
+        eq(cases.customerId, row.customerId),
+      ));
+      if (!kase) throw new FinanceError("tax_settlement_case_required");
       if (!["approved", "part_paid"].includes(row.status) || row.remainingAmount === null) throw new FinanceError("legal_review_required");
       if (amount > Number(row.remainingAmount)) throw new FinanceError("amount_exceeds_due");
       let evidenceAttachmentId: string | null = null;
