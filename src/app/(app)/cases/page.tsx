@@ -79,7 +79,7 @@ export default async function CasesPage({ searchParams }: { searchParams: SP }) 
             return [
               <Link key="n" href={`/cases/${c.id}`} className="font-mono text-xs font-semibold text-emerald-800">{c.caseNumber}</Link>,
               <span key="cu" className="font-medium">{customerCode} · {customer}</span>,
-              isWorkflowKey(workflowKey) ? <Link key="s" href={`/services-workflow/${workflowKey}`} className="text-emerald-700">{WORKFLOW_SERVICES[workflowKey].label[lang]}</Link> : service ?? "—",
+              isWorkflowKey(workflowKey) ? <Link key="s" href={`/cases?serviceKey=${workflowKey}`} className="text-emerald-700">{WORKFLOW_SERVICES[workflowKey].label[lang]}</Link> : service ?? "—",
               <span key="w" className="text-xs text-slate-700">{currentStage}</span>,
               employee ?? "—",
               currentStep?.dueDate ? <span key="d" className={currentStep.dueDate < todayIso() && activeCount ? "text-red-700" : ""}>{formatDate(currentStep.dueDate, fmt)}</span> : "—",
