@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { caseWorkflowSteps, cases, documents, services, taxSettlements } from "@/db/schema";
 import { pageContext } from "@/lib/page";
@@ -49,6 +49,13 @@ export async function evaluateWorkflowGate(caseId: string): Promise<WorkflowActi
 
   if (!step) return { stageId: null, stageNo: null, actionType: "none", label: "گردش‌کار آماده نیست", description: "برای این دوسیه مرحله فعال وجود ندارد.", target: null, blockers: [], canProceed: false };
 
+  // Payment-stage gate: applies at the second-to-last step, which is the
+  // execution/payment step in both the legacy 6-step and the simplified
+  // 4-step flows (existing in-flight cases keep working unchanged).
+  const [{ totalSteps }] = await db.select({ totalSteps: count() }).from(caseWorkflowSteps)
+    .where(and(eq(caseWorkflowSteps.caseId, caseId), eq(caseWorkflowSteps.organizationId, ctx.org.id)));
+  const isTaxGateStep = row.c.workflowKey === "tax-settlement" && totalSteps > 1 && step.stepNo === totalSteps - 1;
+
   const required = requiredDocumentTitles(row.service?.requiredDocuments);
   const docs = await db.select({ id: documents.id, title: documents.title, status: documents.status })
     .from(documents).where(and(eq(documents.caseId, caseId), eq(documents.organizationId, ctx.org.id)));
@@ -65,7 +72,7 @@ export async function evaluateWorkflowGate(caseId: string): Promise<WorkflowActi
     }
   }
 
-  if (row.c.workflowKey === "tax-settlement" && step.stepNo === 5) {
+  if (isTaxGateStep) {
     const settlements = await db.select({ id: taxSettlements.id, status: taxSettlements.status, remainingAmount: taxSettlements.remainingAmount })
       .from(taxSettlements).where(and(eq(taxSettlements.caseId, caseId), eq(taxSettlements.organizationId, ctx.org.id)));
     if (settlements.length === 0) blockers.push({ code: "tax_settlement_missing", label: "تصفیه مالیاتی", detail: "تصفیه مالیاتی این دوسیه ثبت نشده است.", target: `/tax-settlements?caseId=${caseId}` });
