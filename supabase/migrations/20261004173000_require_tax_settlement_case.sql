@@ -5,7 +5,8 @@
 create or replace function public.require_tax_settlement_case()
 returns trigger
 language plpgsql
-as $$
+set search_path = public
+as $
 begin
   if new.case_id is null then
     raise exception 'tax_settlement_case_required';
