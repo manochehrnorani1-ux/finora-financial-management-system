@@ -8,6 +8,7 @@ import { num, optStr, str } from "@/lib/format";
 import { act } from "./util";
 import { normalizeDateInput, parseCaseOpeningDate } from "@/lib/jalali";
 import { formFile, readDocumentUpload, readLogoUpload } from "@/lib/upload";
+import { missingRequiredDocuments, requiredDocumentTitles } from "@/lib/document-requirements";
 
 /* ---------------- Customers ---------------- */
 export async function saveCustomer(fd: FormData) {
@@ -340,6 +341,20 @@ export async function transitionCase(id: string, action: string) {
       if (!tr.from.includes(row.status)) throw new FinanceError("invalid_transition");
 
       if (tr.to === "ready_for_delivery") {
+        const [service] = await tx.select({ requiredDocuments: services.requiredDocuments })
+          .from(services)
+          .where(and(eq(services.id, row.serviceId), eq(services.organizationId, ctx.org.id)));
+
+        const required = requiredDocumentTitles(service?.requiredDocuments);
+        if (required.length > 0) {
+          const caseDocuments = await tx.select({ title: documents.title, status: documents.status })
+            .from(documents)
+            .where(and(eq(documents.caseId, id), eq(documents.organizationId, ctx.org.id)));
+
+          const missing = missingRequiredDocuments(required, caseDocuments);
+          if (missing.length > 0) throw new FinanceError("required_documents_incomplete");
+        }
+
         const steps = await tx.select({ id: caseWorkflowSteps.id, status: caseWorkflowSteps.status, stepNo: caseWorkflowSteps.stepNo })
           .from(caseWorkflowSteps)
           .where(and(eq(caseWorkflowSteps.caseId, id), eq(caseWorkflowSteps.organizationId, ctx.org.id)))
