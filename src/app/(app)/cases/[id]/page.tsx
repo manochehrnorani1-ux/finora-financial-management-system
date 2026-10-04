@@ -138,23 +138,94 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         </Card>
       )}
 
-      <Card title="رهنمای مرحله‌به‌مرحله" className="mb-4 border-emerald-200 bg-emerald-50/40">
-        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-          {workflowGuide.map((guide) => (
-            <div key={guide.key} className="rounded-lg border border-emerald-100 bg-white p-3">
-              <div className="font-medium text-sm text-slate-800">{guide.title}</div>
-              <p className="mt-1 text-xs leading-5 text-slate-600">{guide.text}</p>
-            </div>
-          ))}
-        </div>
-        {activeWorkflowStep ? (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            <strong>اکنون انجام دهید:</strong> مرحله {activeWorkflowStep.stepNo} — {activeWorkflowStep.actionRequired || activeWorkflowStep.title}
-            {Number(activeWorkflowStep.remainingAmount ?? 0) > 0 && " · ابتدا پرداخت باقی‌مانده را تکمیل کنید."}
+      <Card title="راهنمای عملیاتی دوسیه" className="mb-4 border-emerald-200 bg-white">
+        {workflowSteps.length === 0 ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            <strong>گردش‌کار این دوسیه هنوز ساخته نشده است.</strong>
+            <div>برای اجرای مرحله‌به‌مرحله، خدمت باید دارای مراحل Workflow باشد. پس از ایجاد مراحل، سیستم مرحله فعلی، اقدام بعدی، اسناد و شرط عبور به مرحله بعد را در همین بخش نشان می‌دهد.</div>
           </div>
         ) : (
-          <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-            مراحل عملیاتی این دوسیه هنوز ایجاد نشده‌اند. پس از ایجاد Workflow، مرحله فعلی در همین بخش نمایش داده می‌شود.
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+            <div className="space-y-2">
+              {workflowSteps.map((step, index) => {
+                const isActive = step.status === "active";
+                const isCompleted = step.status === "completed";
+                const isBlocked = step.status === "blocked";
+                const isLocked = !isActive && !isCompleted && !isBlocked;
+                const taxSettlement = c.workflowKey === "tax-settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;
+                const amount = taxSettlement ? Number(taxSettlement.taxAmount ?? 0) : Number(step.amount ?? 0);
+                const paidAmount = taxSettlement ? Number(taxSettlement.paidAmount ?? 0) : Number(step.paidAmount ?? 0);
+                const remainingAmount = taxSettlement ? Number(taxSettlement.remainingAmount ?? 0) : Number(step.remainingAmount ?? 0);
+                return (
+                  <div key={step.id} className={`relative rounded-xl border p-4 ${isActive ? "border-emerald-400 bg-emerald-50/60 shadow-sm" : isCompleted ? "border-emerald-200 bg-emerald-50/20" : isBlocked ? "border-red-200 bg-red-50/50" : "border-slate-200 bg-slate-50/40"}`}>
+                    {index < workflowSteps.length - 1 && <div className="absolute right-[27px] top-[54px] hidden h-[calc(100%+8px)] w-px bg-slate-200 md:block" />}
+                    <div className="relative flex gap-3">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${isCompleted ? "bg-emerald-600 text-white" : isActive ? "bg-emerald-700 text-white" : isBlocked ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-500"}`}>
+                        {isCompleted ? "✓" : isBlocked ? "!" : step.stepNo}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <div className="text-xs font-medium text-slate-500">مرحله {step.stepNo}</div>
+                            <div className="font-semibold text-slate-900">{step.title}</div>
+                          </div>
+                          <Badge
+                            status={isCompleted ? "completed" : isActive ? "under_review" : isBlocked ? "rejected" : "draft"}
+                            label={isCompleted ? "تکمیل‌شده" : isActive ? "مرحله فعلی" : isBlocked ? "متوقف" : "قفل"}
+                          />
+                        </div>
+                        <div className="mt-2 text-sm leading-6 text-slate-600">
+                          <strong>اقدام:</strong> {step.actionRequired || step.title}
+                        </div>
+                        {isActive && (
+                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+                              <div className="text-slate-500">اسناد الزامی</div>
+                              <div className={missingRequiredDocumentTitles.length > 0 && step.stepNo > 1 ? "font-medium text-amber-700" : "font-medium text-emerald-700"}>
+                                {step.stepNo > 1 && missingRequiredDocumentTitles.length > 0 ? `ناقص: ${missingRequiredDocumentTitles.join("، ")}` : "تکمیل است"}
+                              </div>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+                              <div className="text-slate-500">پرداخت این مرحله</div>
+                              <div className={remainingAmount > 0 ? "font-medium text-amber-700" : "font-medium text-emerald-700"}>
+                                {amount > 0 ? `${paidAmount.toLocaleString("en-US")} / ${amount.toLocaleString("en-US")} ${c.feeCurrency}` : "پرداخت لازم ندارد"}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {isLocked && (
+                          <div className="mt-2 text-xs text-slate-500">پس از تکمیل مرحله قبلی فعال می‌شود.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="h-fit rounded-xl border border-amber-200 bg-amber-50 p-4">
+              {activeWorkflowStep ? (
+                <>
+                  <div className="text-xs font-semibold text-amber-700">اکنون انجام دهید</div>
+                  <div className="mt-1 text-lg font-bold text-amber-950">مرحله {activeWorkflowStep.stepNo}: {activeWorkflowStep.title}</div>
+                  <p className="mt-2 text-sm leading-6 text-amber-900">{activeWorkflowStep.actionRequired || activeWorkflowStep.title}</p>
+                  {Number(activeWorkflowStep.remainingAmount ?? 0) > 0 && (
+                    <p className="mt-2 rounded-lg bg-white/70 px-3 py-2 text-xs font-medium text-amber-900">ابتدا پرداخت باقی‌مانده این مرحله را تکمیل کنید.</p>
+                  )}
+                  <div className="mt-3 text-xs leading-5 text-amber-800">
+                    <strong>شرط عبور:</strong> اقدام مرحله انجام شود، اسناد الزامی تکمیل باشد و اگر مبلغی تعیین شده است، پرداخت آن کامل شود.
+                  </div>
+                  <div className="mt-3">
+                    <span className="text-xs text-amber-700">دکمه اقدام مربوط به همین مرحله در بخش «گردش‌کار عملیاتی دوسیه» قرار دارد.</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-xs font-semibold text-emerald-700">وضعیت گردش‌کار</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">همه مراحل تکمیل شده‌اند</div>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">دوسیه اکنون برای مرحله بعدی فرآیند، مانند آماده‌سازی برای تحویل یا نهایی‌سازی، بررسی می‌شود.</p>
+                </>
+              )}
+            </div>
           </div>
         )}
       </Card>
