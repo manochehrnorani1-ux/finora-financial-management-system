@@ -216,7 +216,13 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                         <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
                       )
                     ) : step.status === "active" ? (
-                      stepRemaining > 0 ? (\n                        <span className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">\n                          تکمیل مرحله پس از پرداخت باقی‌مانده امکان‌پذیر است.\n                        </span>\n                      ) : (\n                      <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />\n                      )
+                      stepRemaining > 0 ? (
+                        <span className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
+                          تکمیل مرحله پس از پرداخت باقی‌مانده امکان‌پذیر است.
+                        </span>
+                      ) : (
+                      <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
+                      )
                     ) : null}
                   </div>
                 )}
