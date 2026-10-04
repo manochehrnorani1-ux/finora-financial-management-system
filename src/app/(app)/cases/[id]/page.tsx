@@ -62,6 +62,15 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     .orderBy(asc(auditLogs.createdAt), asc(auditLogs.id));
 
   const feeTotal = Math.max(0, Number(c.serviceFee) - Number(c.discountAmount));
+  const activeWorkflowStep = workflowSteps.find((step) => step.status === "active");
+  const workflowGuide = [
+    { key: "review", title: "۱. ثبت و بررسی", text: "معلومات مشتری و دوسیه را بررسی کنید و اسناد اولیه را ثبت کنید." },
+    { key: "documents", title: "۲. تکمیل اسناد", text: "اسناد مورد نیاز را دریافت، بررسی و در دوسیه ثبت کنید." },
+    { key: "work", title: "۳. اجرای خدمت", text: "اقدام مشخص‌شده برای مرحله فعلی را انجام دهید و نتیجه را ثبت کنید." },
+    { key: "payment", title: "۴. تکمیل پرداخت", text: "مبلغ قابل پرداخت را بررسی و پرداخت را ثبت کنید. تا پرداخت کامل، مرحله قابل تکمیل نیست." },
+    { key: "complete", title: "۵. تکمیل مرحله", text: "پس از رفع همه پیش‌نیازها، روی «تکمیل مرحله» کلیک کنید تا مرحله بعد فعال شود." },
+    { key: "final", title: "۶. نهایی‌سازی", text: "پس از تکمیل همه مراحل و پرداخت‌های لازم، دوسیه برای نهایی‌سازی آماده می‌شود." },
+  ];
   const paid = fees.reduce((sum, r) => sum + Number(r.r.paidAmount), 0);
   const remaining = Math.max(0, feeTotal - paid);
   const paymentTargets = [...cash.map((a) => ({ value: `cash:${a.id}`, label: `${t("cash")}: ${a.name}` })), ...bank.map((a) => ({ value: `bank:${a.id}`, label: `${t("bank")}: ${a.label}` }))];
@@ -130,7 +139,24 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {workflowSteps.length > 0 && (
-        <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
+        <>
+          <Card title="رهنمای مرحله‌به‌مرحله" className="mb-4 border-emerald-200 bg-emerald-50/40">
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+              {workflowGuide.map((guide, index) => (
+                <div key={guide.key} className="rounded-lg border border-emerald-100 bg-white p-3">
+                  <div className="font-medium text-sm text-slate-800">{guide.title}</div>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">{guide.text}</p>
+                </div>
+              ))}
+            </div>
+            {activeWorkflowStep && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <strong>اکنون انجام دهید:</strong> مرحله {activeWorkflowStep.stepNo} — {activeWorkflowStep.actionRequired || activeWorkflowStep.title}
+                {Number(activeWorkflowStep.remainingAmount ?? 0) > 0 && " · ابتدا پرداخت باقی‌مانده را تکمیل کنید."}
+              </div>
+            )}
+          </Card>
+          <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
           <div className="space-y-3">
             {workflowSteps.map((step) => {
               const taxSettlementForPayment = c.workflowKey === "tax_settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;
@@ -198,6 +224,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
             )})}
           </div>
         </Card>
+        </>
       )}
       {c.workflowKey === "tax-settlement" && settlements.length === 0 && !["closed", "cancelled"].includes(c.status) && (
         <Card title="پرداخت مالیاتی — نیاز به تصفیه دارد" className="mb-4 border-amber-300 bg-amber-50">
