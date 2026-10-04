@@ -22,7 +22,8 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
   const status = sp1(q.status) ?? "";
   const caseId = sp1(q.caseId) ?? "";
   const requiredTitle = sp1(q.requiredTitle) ?? "";
-  const workflowReturn = sp1(q.workflowReturn) ?? "";\n  const workflowTarget = requiredTitle ? "documents" : null;
+  const workflowReturn = sp1(q.workflowReturn) ?? "";
+  const workflowTarget = requiredTitle ? "documents" : null;
   const where = [eq(documents.organizationId, ctx.org.id)];
   if (status) where.push(eq(documents.status, status));
   if (caseId) where.push(eq(documents.caseId, caseId));
