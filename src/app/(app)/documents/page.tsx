@@ -68,6 +68,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
           </select>
           <button className="rounded-lg border border-slate-300 px-3 text-sm bg-white">{t("filter")}</button>
         </form>
+        {requiredTitle && canWrite && <FormDialog title={`تکمیل سند: ${requiredTitle}`} triggerLabel="تکمیل همین سند موردنیاز" triggerVariant="warning" action={saveDocument} fields={fields} hidden={{ caseId }} successPath="/documents/{id}" />}
         {canWrite && <FormDialog title={t("create")} triggerLabel={`+ ${t("create")}`} action={saveDocument} fields={fields} successPath="/documents/{id}" />}
       </>} />
       <Card>
