@@ -5,7 +5,7 @@ import { jalaliMonthRange, todayIso, formatDate, formatDateTime } from "@/lib/ja
 import type { Metadata } from "next";
 import { Badge, Card, Money, PageHeader, Stat, Table } from "@/components/ui";
 import { db } from "@/db";
-import { cases, customers } from "@/db/schema";
+import { caseWorkflowSteps, cases, customers, services } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { WORKFLOW_KEYS, WORKFLOW_SERVICES } from "@/lib/case-workflow-definitions";
 
@@ -20,7 +20,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
   const from = sp1(q.from) ?? range.start;
   const to = sp1(q.to) ?? range.end;
   const d = await dashboardData(ctx.org.id, from, to);
-  const [serviceCases, customerRows] = await Promise.all([
+  const [serviceCases, customerRows, actionRows] = await Promise.all([
     db.select({ workflowKey: cases.workflowKey, status: cases.status })
       .from(cases)
       .where(eq(cases.organizationId, ctx.org.id))
@@ -28,6 +28,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
     db.select({ id: customers.id })
       .from(customers)
       .where(and(eq(customers.organizationId, ctx.org.id), eq(customers.status, "active"))),
+    db.select({ caseId: cases.id, caseNumber: cases.caseNumber, stepId: caseWorkflowSteps.id, stepTitle: caseWorkflowSteps.title, serviceName: services.name })
+      .from(caseWorkflowSteps)
+      .innerJoin(cases, eq(caseWorkflowSteps.caseId, cases.id))
+      .innerJoin(services, eq(cases.serviceId, services.id))
+      .where(and(eq(caseWorkflowSteps.organizationId, ctx.org.id), eq(cases.organizationId, ctx.org.id), eq(caseWorkflowSteps.status, "active")))
+      .orderBy(caseWorkflowSteps.dueDate, cases.caseNumber)
+      .limit(12),
   ]);
   const activeServiceCases = serviceCases.filter((x) => !["closed", "cancelled"].includes(x.status));
   const serviceCounts = new Map(WORKFLOW_KEYS.map((key) => [key, serviceCases.filter((x) => x.workflowKey === key).length]));
@@ -68,6 +75,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
           ))}
         </div>
       </div>
+      <Card title="اقدامات مورد نیاز من" className="mb-5">
+        {actionRows.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-300 px-4 py-5 text-center text-sm text-slate-500">در حال حاضر اقدام فعال مرتبط با پرونده‌ها وجود ندارد.</div>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {actionRows.map((a) => (
+              <Link key={a.stepId} href={"/cases/" + a.caseId} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 hover:border-amber-400">
+                <div className="text-xs font-semibold text-amber-800">{a.serviceName} · {a.caseNumber}</div>
+                <div className="mt-1 text-sm font-bold text-slate-900">{a.stepTitle}</div>
+                <div className="mt-1 text-xs text-emerald-700">باز کردن دوسیه و انجام مرحله →</div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="خدمات در جریان" value={activeServiceCases.length} tone="blue" />
         <Stat label="خدمات تکمیل‌شده" value={d.completedCases} tone="green" />
