@@ -133,8 +133,8 @@ export async function deleteService(id: string) {
     await db.transaction(async (tx) => {
       const [old] = await tx.select().from(services).where(and(eq(services.id, id), eq(services.organizationId, ctx.org.id)));
       if (!old) throw new FinanceError("not_found");
-      await tx.delete(services).where(eq(services.id, id));
-      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "DELETE", entityType: "service", entityId: id, oldData: old });
+      await tx.update(services).set({ status: "archived" }).where(eq(services.id, id));
+      await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "DELETE", entityType: "service", entityId: id, oldData: old, newData: { status: "archived", archivedInsteadOfHardDelete: true } });
     });
   });
 }
@@ -145,7 +145,7 @@ export async function saveCase(fd: FormData) {
     const ctx = await requireContext("cases.write");
     const id = optStr(fd.get("id"));
     const customerId = str(fd.get("customerId"));
-    const serviceId = optStr(fd.get("serviceId"));
+    const serviceId = str(fd.get("serviceId"));
     const responsibleEmployeeId = optStr(fd.get("responsibleEmployeeId"));
     const rawOpenedAt = normalizeDateInput(fd.get("openedAt"));
     const openedAt = parseCaseOpeningDate(rawOpenedAt);
@@ -155,6 +155,7 @@ export async function saveCase(fd: FormData) {
       : "normal";
 
     if (!customerId) throw new FinanceError("customer_not_found");
+    if (!serviceId) throw new FinanceError("invalid_case_service");
     if (!openedAt) throw new FinanceError("invalid_case_date");
 
     const rawFee = str(fd.get("serviceFee"));
