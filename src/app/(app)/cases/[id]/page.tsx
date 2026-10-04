@@ -9,6 +9,7 @@ import { receiveCaseFee } from "@/actions/finance";
 import { ActionButton, FormDialog, PrintButton, type Field } from "@/components/forms";
 import { Badge, Card, KV, Money, PageHeader, Stat, Table } from "@/components/ui";
 import { formatCaseOpeningDate, formatDate, formatDateTime } from "@/lib/jalali";
+import { missingRequiredDocuments, requiredDocumentStatus, requiredDocumentTitles } from "@/lib/document-requirements";
 
 const STATUS_KEY: Record<string, string> = { new: "newCase", reviewing: "reviewing", missing_documents: "missingDocuments", in_progress: "inProgress", awaiting_review: "awaitingReview", awaiting_approval: "awaitingApproval", ready_for_delivery: "readyForDelivery", delivered: "delivered", closed: "closed", cancelled: "cancelled" };
 
@@ -34,6 +35,16 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     db.select({ id: cashAccounts.id, name: cashAccounts.name }).from(cashAccounts).where(and(eq(cashAccounts.organizationId, ctx.org.id), eq(cashAccounts.isActive, true))),
     db.select({ id: bankAccounts.id, label: sql<string>`${bankAccounts.bankName} || ' — ' || ${bankAccounts.accountNumber}` }).from(bankAccounts).where(and(eq(bankAccounts.organizationId, ctx.org.id), eq(bankAccounts.isActive, true))),
   ]);
+  const requiredDocumentTitlesForCase = requiredDocumentTitles(record.service?.requiredDocuments);
+  const requiredDocumentRows = requiredDocumentTitlesForCase.map((title) => ({
+    title,
+    status: requiredDocumentStatus(title, docs),
+  }));
+  const missingRequiredDocumentTitles = missingRequiredDocuments(
+    requiredDocumentTitlesForCase,
+    docs.map((doc) => ({ title: doc.title, status: doc.status })),
+  );
+
   const feeTotal = Math.max(0, Number(c.serviceFee) - Number(c.discountAmount));
   const paid = fees.reduce((sum, r) => sum + Number(r.r.paidAmount), 0);
   const remaining = Math.max(0, feeTotal - paid);
@@ -76,6 +87,32 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         <Stat label={t("remainingAmount")} value={<Money value={remaining} currency={c.feeCurrency} />} tone={remaining > 0 ? "amber" : "green"} />
         <Stat label={t("status")} value={t(STATUS_KEY[c.status] ?? c.status)} />
       </div>
+      {requiredDocumentRows.length > 0 && (
+        <Card title="اسناد الزامی خدمت" className="mb-4 border-slate-200">
+          <div className="mb-3 text-sm text-slate-600">
+            {missingRequiredDocumentTitles.length > 0
+              ? "این مرحله به تکمیل و تأیید اسناد زیر نیاز دارد."
+              : "تمام اسناد الزامی این خدمت تأیید شده‌اند."}
+          </div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {requiredDocumentRows.map((doc) => (
+              <div key={doc.title} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <span>{doc.title}</span>
+                <Badge
+                  status={doc.status === "verified" ? "completed" : doc.status === "rejected" ? "rejected" : doc.status === "under_review" ? "under_review" : "draft"}
+                  label={
+                    doc.status === "verified" ? "تأیید شده" :
+                    doc.status === "rejected" ? "رد شده" :
+                    doc.status === "under_review" ? "در بررسی" :
+                    doc.status === "uploaded" ? "دریافت شده" : "ناقص"
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {workflowSteps.length > 0 && (
         <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
           <div className="space-y-3">
