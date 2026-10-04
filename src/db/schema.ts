@@ -347,7 +347,7 @@ export const cases = pgTable(
     organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
     caseNumber: text("case_number").notNull(),
     customerId: uuid("customer_id").notNull().references(() => customers.id),
-    serviceId: uuid("service_id").references(() => services.id, { onDelete: "set null" }),
+    serviceId: uuid("service_id").notNull().references(() => services.id),
     responsibleEmployeeId: uuid("responsible_employee_id").references(() => profiles.id, { onDelete: "set null" }),
     status: text("status").notNull().default("new"),
     priority: text("priority").notNull().default("normal"),
