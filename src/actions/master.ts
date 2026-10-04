@@ -397,6 +397,19 @@ export async function completeCaseWorkflowStepAction(id: string) {
         .where(and(eq(cases.id, step.caseId), eq(cases.organizationId, ctx.org.id))).for("update");
       if (!row) throw new FinanceError("not_found");
 
+      const [service] = await tx.select({ requiredDocuments: services.requiredDocuments })
+        .from(services)
+        .where(and(eq(services.id, row.serviceId), eq(services.organizationId, ctx.org.id)));
+
+      const required = requiredDocumentTitles(service?.requiredDocuments);
+      if (required.length > 0) {
+        const caseDocuments = await tx.select({ title: documents.title, status: documents.status })
+          .from(documents)
+          .where(and(eq(documents.caseId, row.id), eq(documents.organizationId, ctx.org.id)));
+        const missing = missingRequiredDocuments(required, caseDocuments);
+        if (missing.length > 0) throw new FinanceError("required_documents_incomplete");
+      }
+
       if (row.workflowKey === "tax-settlement" && step.stepNo === 5) {
         const settlements = await tx.select({
           id: taxSettlements.id, taxAmount: taxSettlements.taxAmount,
