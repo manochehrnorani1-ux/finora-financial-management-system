@@ -22,7 +22,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
   const status = sp1(q.status) ?? "";
   const caseId = sp1(q.caseId) ?? "";
   const requiredTitle = sp1(q.requiredTitle) ?? "";
-  const workflowReturn = sp1(q.workflowReturn) ?? "";
+  const workflowReturn = sp1(q.workflowReturn) ?? "";\n  const workflowTarget = requiredTitle ? "documents" : null;
   const where = [eq(documents.organizationId, ctx.org.id)];
   if (status) where.push(eq(documents.status, status));
   if (caseId) where.push(eq(documents.caseId, caseId));
@@ -53,7 +53,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
   const canApprove = ctx.can("documents.approve");
   return (
     <>
-      <PageHeader title={t("documents")} subtitle={`${rows.length} ${t("records")}`} actions={<>
+      <WorkflowTarget target={workflowTarget} />\n      <PageHeader title={t("documents")} subtitle={`${rows.length} ${t("records")}`} actions={<>
         <form method="get" className="flex flex-wrap gap-2">
           <input name="q" defaultValue={search} placeholder={t("search")} className="input max-w-[160px]" />
           {caseOptions.length > 0 && (
@@ -68,7 +68,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
           </select>
           <button className="rounded-lg border border-slate-300 px-3 text-sm bg-white">{t("filter")}</button>
         </form>
-        {requiredTitle && canWrite && <FormDialog title={`تکمیل سند: ${requiredTitle}`} triggerLabel="تکمیل همین سند موردنیاز" triggerVariant="warning" action={saveDocument} fields={fields} hidden={{ caseId }} successPath="/documents/{id}" />}
+        {requiredTitle && canWrite && <div data-workflow-target="documents"><FormDialog title={`تکمیل سند: ${requiredTitle}`} triggerLabel="تکمیل همین سند موردنیاز" triggerVariant="warning" action={saveDocument} fields={fields} hidden={{ caseId }} successPath="/documents/{id}" /></div>}
         {canWrite && <FormDialog title={t("create")} triggerLabel={`+ ${t("create")}`} action={saveDocument} fields={fields} successPath="/documents/{id}" />}
       </>} />
       <Card>
