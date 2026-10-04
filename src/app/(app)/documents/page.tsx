@@ -9,6 +9,7 @@ import { ActionButton, FormDialog, type Field } from "@/components/forms";
 import { formatDate } from "@/lib/jalali";
 import type { Metadata } from "next";
 import { DOC_STATUSES, DOC_TYPES } from "@/lib/format";
+import WorkflowTarget from "@/components/workflow-target";
 
 export const metadata: Metadata = {
   title: "مدیریت اسناد و مکاتیب",
@@ -20,6 +21,8 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
   const search = sp1(q.q) ?? "";
   const status = sp1(q.status) ?? "";
   const caseId = sp1(q.caseId) ?? "";
+  const requiredTitle = sp1(q.requiredTitle) ?? "";
+  const workflowReturn = sp1(q.workflowReturn) ?? "";
   const where = [eq(documents.organizationId, ctx.org.id)];
   if (status) where.push(eq(documents.status, status));
   if (caseId) where.push(eq(documents.caseId, caseId));
@@ -36,7 +39,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
     db.select({ id: cases.id, caseNumber: cases.caseNumber, customerName: customers.name }).from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).where(eq(cases.organizationId, ctx.org.id)).orderBy(desc(cases.createdAt)).limit(300),
   ]);
   const fields: Field[] = [
-    { name: "title", label: t("title"), required: true, full: true },
+    { name: "title", label: t("title"), required: true, defaultValue: requiredTitle, full: true },
     { name: "documentType", label: t("documentType"), type: "select", required: true, defaultValue: "letter", options: DOC_TYPES.map((x) => ({ value: x, label: t(x) })) },
     { name: "documentNumber", label: t("documentNumber"), placeholder: "AUTO" },
     { name: "caseId", label: t("case"), type: "select", defaultValue: caseId, options: caseOptions.map((k) => ({ value: k.id, label: `${k.caseNumber} — ${k.customerName}` })) },
