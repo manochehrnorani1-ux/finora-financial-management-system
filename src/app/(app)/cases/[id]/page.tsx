@@ -116,10 +116,26 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                       ]}
                     />
                     {step.status === "active" && stepAmount > 0 && stepRemaining > 0 && <FormDialog title="ثبت پرداخت مرحله" triggerLabel="ثبت پرداخت" triggerSize="sm" action={recordCaseWorkflowPaymentAction} hidden={{ stepId: step.id }} fields={[{ name: "amount", label: "مبلغ پرداخت (" + c.feeCurrency + ")", type: "number", required: true, defaultValue: stepRemaining }, { name: "paymentDate", label: "تاریخ پرداخت", type: "date", required: true }, { name: "paymentMethod", label: "روش پرداخت" }, { name: "referenceNumber", label: "شماره مرجع/رسید" }, { name: "notes", label: "یادداشت", type: "textarea", full: true }]} />}
-                    {step.status === "active" && c.workflowKey === "tax-settlement" && step.stepNo === 5 && settlements.length === 0 ? (
-                      <Link href={`/tax-settlements?caseId=${c.id}`} className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white">
-                        ثبت تصفیه مالیاتی همین دوسیه →
-                      </Link>
+                    {step.status === "active" && c.workflowKey === "tax-settlement" && step.stepNo === 5 ? (
+                      settlements.length === 0 ? (
+                        <Link href={`/tax-settlements?caseId=${c.id}`} className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white">
+                          ثبت تصفیه مالیاتی همین دوسیه →
+                        </Link>
+                      ) : settlements.length > 1 ? (
+                        <Link href={`/tax-settlements?caseId=${c.id}`} className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
+                          بررسی تصفیه‌های این دوسیه →
+                        </Link>
+                      ) : settlements[0].status === "calculated" || settlements[0].status === "REQUIRES_LEGAL_REVIEW" ? (
+                        <Link href={`/tax-settlements/${settlements[0].id}`} className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white">
+                          تکمیل/تأیید تصفیه →
+                        </Link>
+                      ) : Number(settlements[0].remainingAmount ?? 0) > 0 ? (
+                        <Link href={`/tax-settlements/${settlements[0].id}`} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white">
+                          ثبت پرداخت مالیاتی →
+                        </Link>
+                      ) : (
+                        <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
+                      )
                     ) : step.status === "active" ? (
                       <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
                     ) : null}
