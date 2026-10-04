@@ -211,7 +211,7 @@ export default async function CaseDetailPage({ params, searchParams }: { params:
       </Card>
       {workflowSteps.length > 0 && (
         <>
-          <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" id="workflow-operational" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
+          <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
           <div className="space-y-3">
             {workflowSteps.map((step) => {
               const taxSettlementForPayment = c.workflowKey === "tax-settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;
