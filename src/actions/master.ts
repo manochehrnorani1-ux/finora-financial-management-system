@@ -337,6 +337,31 @@ export async function transitionCase(id: string, action: string) {
       const [row] = await tx.select().from(cases).where(and(eq(cases.id, id), eq(cases.organizationId, ctx.org.id))).for("update");
       if (!row) throw new FinanceError("not_found");
       if (!tr.from.includes(row.status)) throw new FinanceError("invalid_transition");
+
+      if (tr.to === "ready_for_delivery") {
+        const steps = await tx.select({ id: caseWorkflowSteps.id, status: caseWorkflowSteps.status, stepNo: caseWorkflowSteps.stepNo })
+          .from(caseWorkflowSteps)
+          .where(and(eq(caseWorkflowSteps.caseId, id), eq(caseWorkflowSteps.organizationId, ctx.org.id)))
+          .orderBy(caseWorkflowSteps.stepNo)
+          .for("update");
+
+        const incomplete = steps.find((s) => s.status !== "completed");
+        if (incomplete) {
+          if (row.workflowKey === "tax-settlement" && incomplete.stepNo === 5) {
+            const settlements = await tx.select({ id: taxSettlements.id, status: taxSettlements.status, remainingAmount: taxSettlements.remainingAmount })
+              .from(taxSettlements)
+              .where(and(eq(taxSettlements.caseId, id), eq(taxSettlements.organizationId, ctx.org.id)))
+              .for("update");
+            if (settlements.length === 0) throw new FinanceError("tax_settlement_required");
+            if (settlements.length > 1) throw new FinanceError("tax_settlement_ambiguous");
+            const settlement = settlements[0];
+            if (settlement.status === "calculated" || settlement.status === "REQUIRES_LEGAL_REVIEW") throw new FinanceError("legal_review_required");
+            if (Number(settlement.remainingAmount ?? 0) > 0) throw new FinanceError("workflow_payment_required");
+          }
+          throw new FinanceError("case_task_incomplete");
+        }
+      }
+
       await tx.update(cases).set({ status: tr.to, closedAt: tr.to === "closed" ? new Date().toISOString().slice(0, 10) : row.closedAt, updatedAt: new Date() }).where(eq(cases.id, id));
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: tr.approve ? "APPROVE" : tr.to === "cancelled" ? "CANCEL" : "UPDATE", entityType: "case", entityId: id, oldData: { status: row.status }, newData: { status: tr.to } });
     });
@@ -443,6 +468,9 @@ export async function recordCaseWorkflowPaymentAction(fd: FormData) {
         if (settlements.length > 1) throw new FinanceError("tax_settlement_ambiguous");
 
         settlementId = settlements[0].id;
+        if (!["approved", "part_paid"].includes(settlements[0].status)) {
+          throw new FinanceError(settlements[0].status === "calculated" ? "approval_required" : "legal_review_required");
+        }
         due = Number(settlements[0].taxAmount ?? 0);
 
         const [paidRow] = await tx.select({ paid: sum(taxSettlementPayments.amount) })
