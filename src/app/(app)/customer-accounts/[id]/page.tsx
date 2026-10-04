@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { cases, customerAccounts, customerLedger, customers, services } from "@/db/schema";
+import { auditLogs, cases, customerAccounts, customerLedger, customers, documents, generatedForms, services, taxSettlements } from "@/db/schema";
 import { pageContext } from "@/lib/page";
 import { loadFinanceRefs } from "@/lib/refs";
 import { receivePaymentAction, setCustomerOpeningBalance } from "@/actions/finance";
@@ -17,11 +17,19 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
   const { ctx, t, fmt } = await pageContext("customer_accounts.read");
   const [c] = await db.select().from(customers).where(and(eq(customers.id, id), eq(customers.organizationId, ctx.org.id)));
   if (!c) notFound();
-  const [[acct], rows, refs, customerCases] = await Promise.all([
+  const canCasesRead = ctx.can("cases.read");
+  const canDocumentsRead = ctx.can("documents.read");
+  const canTaxRead = ctx.can("tax_settlements.read");
+  const canAuditRead = ctx.can("audit.read");
+  const [[acct], rows, refs, customerCases, customerDocuments, customerTax, customerResults, customerTimeline] = await Promise.all([
     db.select().from(customerAccounts).where(and(eq(customerAccounts.customerId, id), eq(customerAccounts.organizationId, ctx.org.id))),
-    db.select().from(customerLedger).where(eq(customerLedger.customerId, id)).orderBy(asc(customerLedger.transactionDate), asc(customerLedger.createdAt)),
+    db.select().from(customerLedger).where(and(eq(customerLedger.customerId, id), eq(customerLedger.organizationId, ctx.org.id))).orderBy(asc(customerLedger.transactionDate), asc(customerLedger.createdAt)),
     loadFinanceRefs(ctx.org.id, ctx.org.currency),
-    db.select({ c: cases, serviceName: services.name }).from(cases).leftJoin(services, eq(cases.serviceId, services.id)).where(and(eq(cases.customerId, id), eq(cases.organizationId, ctx.org.id))).orderBy(desc(cases.createdAt)),
+    canCasesRead ? db.select({ c: cases, serviceName: services.name }).from(cases).leftJoin(services, eq(cases.serviceId, services.id)).where(and(eq(cases.customerId, id), eq(cases.organizationId, ctx.org.id))).orderBy(desc(cases.createdAt)) : Promise.resolve([]),
+    canDocumentsRead ? db.select().from(documents).where(and(eq(documents.customerId, id), eq(documents.organizationId, ctx.org.id))).orderBy(desc(documents.createdAt)) : Promise.resolve([]),
+    canTaxRead ? db.select().from(taxSettlements).where(and(eq(taxSettlements.customerId, id), eq(taxSettlements.organizationId, ctx.org.id))).orderBy(desc(taxSettlements.createdAt)) : Promise.resolve([]),
+    canCasesRead ? db.select().from(generatedForms).where(and(eq(generatedForms.customerId, id), eq(generatedForms.organizationId, ctx.org.id))).orderBy(desc(generatedForms.createdAt)) : Promise.resolve([]),
+    canAuditRead ? db.select().from(auditLogs).where(and(eq(auditLogs.organizationId, ctx.org.id), sql`${auditLogs.entityId} in (select id from public.cases where customer_id = ${id} and organization_id = ${ctx.org.id}) or ${auditLogs.entityId} = ${id}`)).orderBy(desc(auditLogs.createdAt)).limit(100) : Promise.resolve([]),
   ]);
   const opening = Number(acct?.openingBalance ?? 0);
   const debit = round2(rows.reduce((s, r) => s + Number(r.debit), 0));
@@ -85,6 +93,31 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
           </Card>
         )}
       </div>
+        {canDocumentsRead && customerDocuments.length > 0 && (
+          <Card title={`اسناد (${customerDocuments.length})`} className="lg:col-span-4">
+            <Table headers={["شماره", "عنوان", "وضعیت", "تاریخ"]} empty={t("noData")}
+              rows={customerDocuments.map((d) => [d.documentNumber, d.title, <Badge key={d.id} status={d.status} label={t(d.status)} />, formatDate(d.documentDate, fmt)])} />
+          </Card>
+        )}
+        {canTaxRead && customerTax.length > 0 && (
+          <Card title={`تصفیه‌های مالیاتی (${customerTax.length})`} className="lg:col-span-4">
+            <Table headers={["شماره", "وضعیت", "مبلغ مالیه", "باقی‌مانده"]} empty={t("noData")}
+              rows={customerTax.map((s) => [s.settlementNumber, t(s.status), <Money key={s.id} value={s.taxAmount} currency={ctx.org.currency} />, <Money key={`r-${s.id}`} value={s.remainingAmount} currency={ctx.org.currency} />])} />
+          </Card>
+        )}
+        {canCasesRead && customerResults.length > 0 && (
+          <Card title={`نتایج خدمات (${customerResults.length})`} className="lg:col-span-4">
+            <Table headers={["نتیجه/فورم", "وضعیت", "تاریخ"]} empty={t("noData")}
+              rows={customerResults.map((f) => [f.formNameSnapshot, f.matchStatus, formatDateTime(f.createdAt, fmt)])} />
+          </Card>
+        )}
+        {canAuditRead && customerTimeline.length > 0 && (
+          <Card title="Timeline مشتری" className="lg:col-span-4">
+            <ul className="divide-y divide-slate-100">{customerTimeline.map((e) => (
+              <li key={e.id} className="py-2 text-sm"><div className="flex justify-between gap-3 text-xs text-slate-500"><span>{e.action} · {e.entityType}</span><span>{formatDateTime(e.createdAt, fmt)}</span></div></li>
+            ))}</ul>
+          </Card>
+        )}
     </>
   );
 }
