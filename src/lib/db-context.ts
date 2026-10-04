@@ -1,7 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { db } from "../db/index.ts";
 
 /**
  * Minimal server-derived security context required by the RLS transaction boundary.
