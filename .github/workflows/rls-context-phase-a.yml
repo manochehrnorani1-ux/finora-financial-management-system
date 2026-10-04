@@ -1,0 +1,48 @@
+name: FINORA RLS Context Phase A
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feat/rls-transaction-context]
+
+jobs:
+  rls-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: finora_phase_a
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d finora_phase_a"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: RLS transaction context integration test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finora_phase_a
+        run: npm run test:rls-context
