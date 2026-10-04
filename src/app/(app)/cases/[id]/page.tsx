@@ -159,7 +159,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
           <div className="space-y-3">
             {workflowSteps.map((step) => {
-              const taxSettlementForPayment = c.workflowKey === "tax_settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;
+              const taxSettlementForPayment = c.workflowKey === "tax-settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;
               const stepAmount = taxSettlementForPayment ? Number(taxSettlementForPayment.taxAmount ?? 0) : Number(step.amount ?? 0);
               const stepPaid = taxSettlementForPayment ? Number(taxSettlementForPayment.paidAmount ?? 0) : Number(step.paidAmount ?? 0);
               const stepRemaining = taxSettlementForPayment ? Number(taxSettlementForPayment.remainingAmount ?? 0) : Number(step.remainingAmount ?? 0);
@@ -216,7 +216,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                         <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
                       )
                     ) : step.status === "active" ? (
-                      <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
+                      stepRemaining > 0 ? (\n                        <span className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">\n                          تکمیل مرحله پس از پرداخت باقی‌مانده امکان‌پذیر است.\n                        </span>\n                      ) : (\n                      <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />\n                      )
                     ) : null}
                   </div>
                 )}
