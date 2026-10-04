@@ -54,7 +54,8 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
   const canApprove = ctx.can("documents.approve");
   return (
     <>
-      <WorkflowTarget target={workflowTarget} />\n      <PageHeader title={t("documents")} subtitle={`${rows.length} ${t("records")}`} actions={<>
+      <WorkflowTarget target={workflowTarget} />
+      <PageHeader title={t("documents")} subtitle={`${rows.length} ${t("records")}`} actions={<>
         <form method="get" className="flex flex-wrap gap-2">
           <input name="q" defaultValue={search} placeholder={t("search")} className="input max-w-[160px]" />
           {caseOptions.length > 0 && (
