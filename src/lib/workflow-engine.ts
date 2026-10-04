@@ -54,7 +54,7 @@ export async function evaluateWorkflowGate(caseId: string): Promise<WorkflowActi
     .from(documents).where(and(eq(documents.caseId, caseId), eq(documents.organizationId, ctx.org.id)));
   const blockers: WorkflowBlocker[] = [];
 
-  for (const title of required) {
+  // Match the existing backend completion gate: intake (step 1) is not document-gated.\n  if (step.stepNo > 1) for (const title of required) {
     const status = requiredDocumentStatus(title, docs);
     if (status === "missing") {
       blockers.push({ code: "document_missing", label: title, detail: "سند مورد نیاز بارگذاری نشده است.", target: `/documents?caseId=${caseId}&q=${encodeURIComponent(title)}&requiredTitle=${encodeURIComponent(title)}&workflowReturn=${encodeURIComponent(returnTarget(caseId))}` });
