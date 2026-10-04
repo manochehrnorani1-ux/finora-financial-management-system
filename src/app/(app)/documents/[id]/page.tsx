@@ -9,11 +9,14 @@ import { Badge, Card, KV, PageHeader } from "@/components/ui";
 import { ActionButton, FormDialog, PrintButton, type Field } from "@/components/forms";
 import { formatDate, formatDateTime } from "@/lib/jalali";
 import { DOC_TYPES } from "@/lib/format";
+import WorkflowTarget from "@/components/workflow-target";
 
 const FLOW = ["draft", "submitted", "under_review", "approved", "completed", "archived"];
 
-export default async function DocumentDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
+  const query = (await searchParams) ?? {};
+  const workflowTarget = typeof query.workflowTarget === "string" ? query.workflowTarget : null;
   const { ctx, t, fmt } = await pageContext("documents.read");
   const [row] = await db.select({ d: documents, customer: customers.name }).from(documents).leftJoin(customers, eq(documents.customerId, customers.id)).where(and(eq(documents.id, id), eq(documents.organizationId, ctx.org.id)));
   if (!row) notFound();
@@ -58,7 +61,8 @@ export default async function DocumentDetail({ params }: { params: Promise<{ id:
           {canWrite && ["completed", "rejected", "cancelled"].includes(d.status) && <ActionButton action={transitionDocument} args={[d.id, "archive"]} label={t("archive")} size="md" />}
         </>}
       />
-      <Card title={t("workflow")} className="mb-4">
+      <WorkflowTarget target={workflowTarget} />
+      <div data-workflow-target="verification"><Card title={t("workflow")} className="mb-4">
         <ol className="flex flex-wrap items-center gap-2 text-xs">
           {FLOW.map((s, i) => (
             <li key={s} className="flex items-center gap-2">
@@ -69,7 +73,7 @@ export default async function DocumentDetail({ params }: { params: Promise<{ id:
           {["rejected", "cancelled"].includes(d.status) && <li><Badge status={d.status} label={t(d.status)} /></li>}
         </ol>
         {d.rejectionReason && <p className="mt-2 text-sm text-red-700">{t("reason")}: {d.rejectionReason}</p>}
-      </Card>
+      </Card></div>
       <div className="grid lg:grid-cols-2 gap-4">
         <Card title={t("details")}>
           <KV items={[
