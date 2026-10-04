@@ -7,7 +7,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:rls-context": "node --experimental-strip-types scripts/test-rls-context.ts"
   },
   "dependencies": {
     "dotenv": "17.3.1",
