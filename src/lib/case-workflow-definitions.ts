@@ -1,7 +1,7 @@
 import { OPERATIONAL_SERVICES } from "./operational-services";
 
 /** Internal service keys; public marketing and official authority decisions remain separate. */
-export const WORKFLOW_KEYS = ["tax-settlement", "fx-renewal", "fx-license", "fx-cancel", "fx-unfreeze", "corrective-plan"] as const;
+export const WORKFLOW_KEYS = ["tax-settlement", "license-renewal", "fx-license", "fx-cancel", "fx-unfreeze", "corrective-plan", "other-admin", "tax-advisory", "finance-advisory", "financial-report"] as const;
 export type WorkflowKey = (typeof WORKFLOW_KEYS)[number];
 export const isWorkflowKey = (v: string): v is WorkflowKey => WORKFLOW_KEYS.includes(v as WorkflowKey);
 export type Language = "fa" | "ps" | "en";
@@ -22,12 +22,13 @@ export const WORKFLOW_SERVICES: Record<WorkflowKey, {
     requirements: docs("tax-settlement"),
     stages: ["intake", "documents", "financial_review", "settlement", "authority_followup", "outcome"], publicListed: true,
   },
-  "fx-renewal": {
+  "license-renewal": {
     label: { fa: "تمدید جواز صرافی", ps: "د صرافۍ جواز تمدید", en: "FX licence renewal" },
     summary: { fa: "بررسی جواز موجود و تاریخ ختم، بدهی مشتری، تصفیه، فیس، تسلیمی و نتیجهٔ مرجع.", ps: "د موجود جواز او پای نېټې، د مراجع پور، تصفیه، فیس، سپارلو او د مرجع پایلې ارزونه.", en: "Review existing licence and expiry, client liabilities, settlement, fees, submission and authority outcome." },
     requirements: { fa: ["کاپی جواز فعلی و تاریخ ختم", "تذکره متقاضی و TIN", "اسناد مالیاتی و تصفیهٔ قابل تطبیق", "فورم تمدید جواز از منبع رسمی مرجع", "رسید فیس مرجع در صورت مطالبه"], ps: ["د اوسني جواز کاپي او د پای نېټه", "د متقاضي تذکره او TIN", "مالیاتي اسناد او اړونده تصفیه", "د مرجع له رسمي سرچینې د جواز تمدید فورم", "د مرجع د فیس رسید که غوښتل کېږي"], en: ["Current licence and expiry", "Applicant ID and TIN", "Applicable tax and clearance evidence", "Renewal form from authority source", "Authority fee receipt where required"] },
     stages: ["intake", "license_check", "documents", "financial_review", "settlement", "service_fee", "authority_followup", "outcome"], publicListed: false,
   },
+  "other-admin": { label: { fa: "سایر خدمات اداری", ps: "نور اداري خدمتونه", en: "Other administrative services" }, summary: { fa: "ثبت موضوع، تهیه سند یا مکتوب، بازبینی، تأیید مشتری، چاپ رسمی و آرشیف.", ps: "د موضوع ثبت، سند یا مکتوب ترتیب، بیاکتنه، د مراجع تایید، رسمي چاپ او ارشیف.", en: "Record the matter, prepare, review, confirm, print and archive." }, requirements: docs("other-admin"), stages: ["intake","documents","draft","review","client_confirmation","delivery"], publicListed: false },
   "fx-license": {
     label: { fa: "اخذ جواز صرافی", ps: "د صرافۍ جواز اخیستل", en: "FX licence application" },
     summary: { fa: "ثبت متقاضی، کنترل مدارک، بررسی مالی، حق‌الخدمت، فورم مرجع و ثبت نتیجهٔ رسمی.", ps: "د متقاضي ثبت، د اسنادو کتنه، مالي ارزونه، د خدمت فیس، د مرجع فورم او د رسمي پایلې ثبت.", en: "Register applicant, verify evidence, review finances, collect service fee, prepare authority form and record decision." },
