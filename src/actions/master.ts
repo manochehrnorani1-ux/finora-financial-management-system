@@ -461,7 +461,7 @@ export async function recordCaseWorkflowPaymentAction(fd: FormData) {
 
       if (row.workflowKey === "tax-settlement" && step.stepNo === 5) {
         const settlements = await tx.select({
-          id: taxSettlements.id, taxAmount: taxSettlements.taxAmount,
+          id: taxSettlements.id, taxAmount: taxSettlements.taxAmount, status: taxSettlements.status,
         }).from(taxSettlements)
           .where(and(eq(taxSettlements.caseId, row.id), eq(taxSettlements.organizationId, ctx.org.id))).for("update");
         if (settlements.length === 0) throw new FinanceError("tax_settlement_required");
