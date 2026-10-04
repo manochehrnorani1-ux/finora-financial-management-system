@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { attachments, bankAccounts, caseFiles, caseNotes, caseWorkflowSteps, cases, customers, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, cashAccounts } from "@/db/schema";
+import { attachments, auditLogs, bankAccounts, caseFiles, caseNotes, caseWorkflowSteps, cases, customers, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlements, cashAccounts } from "@/db/schema";
 import { pageContext } from "@/lib/page";
 import { saveCase, transitionCase, addCaseNoteForm, uploadCaseFile, saveDocument, deleteUnlinkedCaseAction, completeCaseWorkflowStepAction, updateCaseWorkflowStepAction, recordCaseWorkflowPaymentAction } from "@/actions/master";
 import { receiveCaseFee } from "@/actions/finance";
@@ -44,6 +44,22 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     requiredDocumentTitlesForCase,
     docs.map((doc) => ({ title: doc.title, status: doc.status })),
   );
+
+  const timelineEvents = await db.select().from(auditLogs)
+    .where(and(
+      eq(auditLogs.organizationId, ctx.org.id),
+      sql`(
+        ${auditLogs.entityId} = ${id}
+        or ${auditLogs.entityId} in (select id from public.case_workflow_steps where case_id = ${id} and organization_id = ${ctx.org.id})
+        or ${auditLogs.entityId} in (select id from public.documents where case_id = ${id} and organization_id = ${ctx.org.id})
+        or ${auditLogs.entityId} in (select id from public.tax_settlements where case_id = ${id} and organization_id = ${ctx.org.id})
+        or ${auditLogs.entityId} in (select id from public.tax_settlement_payments where settlement_id in (select id from public.tax_settlements where case_id = ${id} and organization_id = ${ctx.org.id}))
+        or ${auditLogs.entityId} in (select id from public.case_workflow_payments where case_id = ${id} and organization_id = ${ctx.org.id})
+        or ${auditLogs.entityId} in (select id from public.service_fee_receipts where case_id = ${id} and organization_id = ${ctx.org.id})
+        or ${auditLogs.entityId} in (select id from public.generated_forms where case_id = ${id} and organization_id = ${ctx.org.id})
+      )`
+    ))
+    .orderBy(asc(auditLogs.createdAt), asc(auditLogs.id));
 
   const feeTotal = Math.max(0, Number(c.serviceFee) - Number(c.discountAmount));
   const paid = fees.reduce((sum, r) => sum + Number(r.r.paidAmount), 0);
