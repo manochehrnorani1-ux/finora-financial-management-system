@@ -1,5 +1,5 @@
 "use server";
-import { and, eq, sum } from "drizzle-orm";
+import { and, count, eq, sum } from "drizzle-orm";
 import { db } from "@/db";
 import { attachments, caseFiles, caseNotes, caseWorkflowPayments, caseWorkflowSteps, cases, complianceEvents, contracts, customers, documentFiles, documentRevisions, documents, generatedForms, incomes, organizationMembers, profiles, serviceFeeReceipts, services, taxSettlementPayments, taxSettlements, letters } from "@/db/schema";
 import { requireContext } from "@/lib/auth";
@@ -377,7 +377,8 @@ export async function transitionCase(id: string, action: string) {
 
         const incomplete = steps.find((s) => s.status !== "completed");
         if (incomplete) {
-          if (row.workflowKey === "tax-settlement" && incomplete.stepNo === 5) {
+          // Tax gate at the payment step: second-to-last in both legacy 6-step and simplified 4-step flows.
+          if (row.workflowKey === "tax-settlement" && steps.length > 1 && incomplete.stepNo === steps.length - 1) {
             const settlements = await tx.select({ id: taxSettlements.id, status: taxSettlements.status, remainingAmount: taxSettlements.remainingAmount })
               .from(taxSettlements)
               .where(and(eq(taxSettlements.caseId, id), eq(taxSettlements.organizationId, ctx.org.id)))
@@ -426,7 +427,10 @@ export async function completeCaseWorkflowStepAction(id: string) {
         if (missing.length > 0) throw new FinanceError("required_documents_incomplete");
       }
 
-      if (row.workflowKey === "tax-settlement" && step.stepNo === 5) {
+      const [{ totalSteps }] = await tx.select({ totalSteps: count() }).from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.caseId, step.caseId), eq(caseWorkflowSteps.organizationId, ctx.org.id)));
+      // Tax gate at the payment step: second-to-last in both legacy 6-step and simplified 4-step flows.
+      if (row.workflowKey === "tax-settlement" && totalSteps > 1 && step.stepNo === totalSteps - 1) {
         const settlements = await tx.select({
           id: taxSettlements.id, taxAmount: taxSettlements.taxAmount,
           paidAmount: taxSettlements.paidAmount, remainingAmount: taxSettlements.remainingAmount,
@@ -504,7 +508,10 @@ export async function recordCaseWorkflowPaymentAction(fd: FormData) {
       let paid = Number(step.paidAmount ?? 0);
       let settlementId: string | null = null;
 
-      if (row.workflowKey === "tax-settlement" && step.stepNo === 5) {
+      const [{ totalSteps: payTotalSteps }] = await tx.select({ totalSteps: count() }).from(caseWorkflowSteps)
+        .where(and(eq(caseWorkflowSteps.caseId, step.caseId), eq(caseWorkflowSteps.organizationId, ctx.org.id)));
+      // Tax gate at the payment step: second-to-last in both legacy 6-step and simplified 4-step flows.
+      if (row.workflowKey === "tax-settlement" && payTotalSteps > 1 && step.stepNo === payTotalSteps - 1) {
         const settlements = await tx.select({
           id: taxSettlements.id, taxAmount: taxSettlements.taxAmount, status: taxSettlements.status,
         }).from(taxSettlements)
