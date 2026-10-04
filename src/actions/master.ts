@@ -186,7 +186,7 @@ export async function saveCase(fd: FormData) {
           .from(services)
           .where(and(eq(services.id, serviceId), eq(services.organizationId, ctx.org.id)));
 
-        if (!s) throw new FinanceError("invalid_case_service");
+        if (!s || s.status !== "active") throw new FinanceError("invalid_case_service");
         service = s;
       }
 
