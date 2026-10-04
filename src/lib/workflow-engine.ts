@@ -64,7 +64,7 @@ export async function evaluateWorkflowGate(caseId: string): Promise<WorkflowActi
     }
   }
 
-  if (row.workflowKey === "tax-settlement" && step.stepNo === 5) {
+  if (row.c.workflowKey === "tax-settlement" && step.stepNo === 5) {
     const settlements = await db.select({ id: taxSettlements.id, status: taxSettlements.status, remainingAmount: taxSettlements.remainingAmount })
       .from(taxSettlements).where(and(eq(taxSettlements.caseId, caseId), eq(taxSettlements.organizationId, ctx.org.id)));
     if (settlements.length === 0) blockers.push({ code: "tax_settlement_missing", label: "تصفیه مالیاتی", detail: "تصفیه مالیاتی این دوسیه ثبت نشده است.", target: `/tax-settlements?caseId=${caseId}` });
