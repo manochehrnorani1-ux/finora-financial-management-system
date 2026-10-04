@@ -402,7 +402,9 @@ export async function completeCaseWorkflowStepAction(id: string) {
         .where(and(eq(services.id, row.serviceId), eq(services.organizationId, ctx.org.id)));
 
       const required = requiredDocumentTitles(service?.requiredDocuments);
-      if (required.length > 0) {
+      // Step 1 is the intake/registration stage; required documents gate subsequent execution steps.
+      const documentGateRequired = required.length > 0 && step.stepNo > 1;
+      if (documentGateRequired) {
         const caseDocuments = await tx.select({ title: documents.title, status: documents.status })
           .from(documents)
           .where(and(eq(documents.caseId, row.id), eq(documents.organizationId, ctx.org.id)));
