@@ -138,24 +138,28 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         </Card>
       )}
 
+      <Card title="رهنمای مرحله‌به‌مرحله" className="mb-4 border-emerald-200 bg-emerald-50/40">
+        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+          {workflowGuide.map((guide) => (
+            <div key={guide.key} className="rounded-lg border border-emerald-100 bg-white p-3">
+              <div className="font-medium text-sm text-slate-800">{guide.title}</div>
+              <p className="mt-1 text-xs leading-5 text-slate-600">{guide.text}</p>
+            </div>
+          ))}
+        </div>
+        {activeWorkflowStep ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <strong>اکنون انجام دهید:</strong> مرحله {activeWorkflowStep.stepNo} — {activeWorkflowStep.actionRequired || activeWorkflowStep.title}
+            {Number(activeWorkflowStep.remainingAmount ?? 0) > 0 && " · ابتدا پرداخت باقی‌مانده را تکمیل کنید."}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+            مراحل عملیاتی این دوسیه هنوز ایجاد نشده‌اند. پس از ایجاد Workflow، مرحله فعلی در همین بخش نمایش داده می‌شود.
+          </div>
+        )}
+      </Card>
       {workflowSteps.length > 0 && (
         <>
-          <Card title="رهنمای مرحله‌به‌مرحله" className="mb-4 border-emerald-200 bg-emerald-50/40">
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-              {workflowGuide.map((guide, index) => (
-                <div key={guide.key} className="rounded-lg border border-emerald-100 bg-white p-3">
-                  <div className="font-medium text-sm text-slate-800">{guide.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">{guide.text}</p>
-                </div>
-              ))}
-            </div>
-            {activeWorkflowStep && (
-              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                <strong>اکنون انجام دهید:</strong> مرحله {activeWorkflowStep.stepNo} — {activeWorkflowStep.actionRequired || activeWorkflowStep.title}
-                {Number(activeWorkflowStep.remainingAmount ?? 0) > 0 && " · ابتدا پرداخت باقی‌مانده را تکمیل کنید."}
-              </div>
-            )}
-          </Card>
           <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
           <div className="space-y-3">
             {workflowSteps.map((step) => {
