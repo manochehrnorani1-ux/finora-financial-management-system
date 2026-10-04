@@ -90,7 +90,7 @@ export async function saveService(fd: FormData) {
     const id = optStr(fd.get("id"));
     const name = str(fd.get("name"));
     const description = optStr(fd.get("description"));
-    const listFrom = (key: string) => str(fd.get(key)).split(/\\r?\\n/).map((x) => x.trim()).filter(Boolean);
+    const listFrom = (key: string) => str(fd.get(key)).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
     const data = {
       name,
       category: optStr(fd.get("category")),

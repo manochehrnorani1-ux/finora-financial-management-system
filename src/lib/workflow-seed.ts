@@ -14,17 +14,15 @@ export async function ensureWorkflowServices(tx: Tx, orgId: string, isDemo = fal
     if (existing) {
       const patch: Partial<typeof services.$inferInsert> = {};
       if (existing.workflowKey !== workflowKey) patch.workflowKey = workflowKey;
-      // Keep the seeded workflow steps in sync with the catalog so the
-      // simplified 4-stage flow applies to new cases in existing orgs.
-      // Materialized case_workflow_steps of in-flight cases are untouched.
+      // Migrate legacy 6-stage services to the simplified 4-stage catalog so the
+      // new flow applies to new cases in existing orgs. Only services still on
+      // the legacy 6-step shape are migrated; customized step lists of any other
+      // shape are left untouched. Materialized case_workflow_steps of in-flight
+      // cases are never modified here.
       const currentSteps = (existing.workflowSteps ?? {}) as Record<string, unknown>;
-      const wantedSteps = def.workflow;
-      if (
-        JSON.stringify(currentSteps.fa ?? null) !== JSON.stringify(wantedSteps.fa) ||
-        JSON.stringify(currentSteps.ps ?? null) !== JSON.stringify(wantedSteps.ps) ||
-        JSON.stringify(currentSteps.en ?? null) !== JSON.stringify(wantedSteps.en)
-      ) {
-        patch.workflowSteps = wantedSteps;
+      const currentFa = currentSteps.fa;
+      if (Array.isArray(currentFa) && currentFa.length === 6) {
+        patch.workflowSteps = def.workflow;
       }
       if (Object.keys(patch).length > 0) {
         await tx.update(services)
