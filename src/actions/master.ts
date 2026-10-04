@@ -261,7 +261,20 @@ export async function saveCase(fd: FormData) {
 
       const workflowCatalog = (service?.workflowSteps ?? {}) as Record<string, unknown>;
       const workflowSteps = workflowCatalog.fa ?? workflowCatalog.en ?? [];
-      const titles = Array.isArray(workflowSteps) ? workflowSteps.filter((x): x is string => typeof x === "string") : [];
+      const definitions = Array.isArray(workflowSteps)
+        ? workflowSteps
+            .map((item) => {
+              if (typeof item === "string") return { title: item, metadata: {} as Record<string, unknown> };
+              if (item && typeof item === "object") {
+                const value = item as Record<string, unknown>;
+                const title = typeof value.title === "string" ? value.title : typeof value.name === "string" ? value.name : null;
+                return title ? { title, metadata: value } : null;
+              }
+              return null;
+            })
+            .filter((x): x is { title: string; metadata: Record<string, unknown> } => Boolean(x))
+        : [];
+      const titles = definitions.map((x) => x.title);
 
       const [row] = await tx
         .insert(cases)
@@ -288,9 +301,10 @@ export async function saveCase(fd: FormData) {
             stepKey: (service?.workflowKey ?? "case") + "_" + (index + 1),
             title,
             status: index === 0 ? "active" : "pending",
-            actionRequired: title,
+            actionRequired: typeof definitions[index]?.metadata.actionRequired === "string" ? String(definitions[index].metadata.actionRequired) : title,
             paidAmount: 0,
             remainingAmount: 0,
+            metadata: definitions[index]?.metadata ?? {},
           })),
         );
       }
