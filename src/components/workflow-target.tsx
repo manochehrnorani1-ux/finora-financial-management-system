@@ -8,7 +8,7 @@ export default function WorkflowTarget({ target }: { target?: string | null }) {
     const selectors: Record<string, string> = {
       payment: "[data-workflow-target='payment']",
       "step-complete": "[data-workflow-target='step-complete']",
-      documents: "[data-workflow-target='documents']",
+      documents: "[data-workflow-target='documents']",\n      verification: "[data-workflow-target='verification']",
       "service-action": "[data-workflow-target='service-action']",
     };
     const selector = selectors[target];
