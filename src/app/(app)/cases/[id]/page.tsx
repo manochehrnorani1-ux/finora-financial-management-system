@@ -202,7 +202,7 @@ export default async function CaseDetailPage({ params, searchParams }: { params:
               })}
             </div>
             {activeWorkflowStep && ctx.can("cases.write") && (
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3" data-workflow-target="payment">
                 <span className="w-full text-xs text-slate-500">اقدام‌های مرحله فعلی «{activeWorkflowStep.title}»:</span>
                 {activeStepAmount > 0 && <span className="text-xs text-slate-600">مبلغ: <Money value={activeStepAmount} currency={c.feeCurrency} /> · پرداخت‌شده: <Money value={activeStepPaid} currency={c.feeCurrency} /> · باقی‌مانده: <Money value={activeStepRemaining} currency={c.feeCurrency} /></span>}
                 <FormDialog
