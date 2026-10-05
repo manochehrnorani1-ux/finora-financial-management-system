@@ -5,6 +5,7 @@ import { cases, customers, officialForms, customerBranches, customerEmployees } 
 import { pageContext, sp1, type SP } from "@/lib/page";
 import { saveOfficialForm, verifyOfficialFormAction, createGeneratedFormAction } from "@/actions/official-forms";
 import { ensurePublicWebsite } from "@/lib/website-seed";
+import { ensureOfficialFormTemplates } from "@/lib/official-form-seed";
 import { ActionButton, FormDialog, type Field } from "@/components/forms";
 import { Badge, Card, PageHeader, Table } from "@/components/ui";
 import type { Metadata } from "next";
@@ -18,7 +19,10 @@ export default async function OfficialFormsPage({ searchParams }: { searchParams
   const { ctx, t, fmt } = await pageContext("official_forms.read");
   const q = await searchParams;
   const caseId = sp1(q.caseId);
-  await db.transaction((tx) => ensurePublicWebsite(tx, ctx.org.id, ctx.user.id));
+  await db.transaction(async (tx) => {
+    await ensurePublicWebsite(tx, ctx.org.id, ctx.user.id);
+    await ensureOfficialFormTemplates(tx, ctx.org.id);
+  });
   const [forms, caseOptions, customerOptions, branchOptions, employeeOptions] = await Promise.all([
     db.select().from(officialForms).where(eq(officialForms.organizationId, ctx.org.id)).orderBy(officialForms.agency, officialForms.formKey, desc(officialForms.version)),
     db.select({ c: cases, customer: customers.name }).from(cases).innerJoin(customers, eq(cases.customerId, customers.id)).where(eq(cases.organizationId, ctx.org.id)).orderBy(desc(cases.createdAt)).limit(300),
