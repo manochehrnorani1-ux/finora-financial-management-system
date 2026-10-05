@@ -1,0 +1,43 @@
+.dab-standard-forms-shell {
+  width: 100%;
+}
+
+.dab-official-header {
+  direction: rtl;
+  text-align: center;
+  margin: 0 auto 1rem;
+  padding: 0.5rem 0;
+  font-family: inherit;
+}
+
+.dab-official-header p {
+  margin: 0.15rem 0;
+}
+
+.dab-official-header p:first-child {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.dab-official-header p:nth-child(2) {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.dab-official-header p:nth-child(3) {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+@media print {
+  .dab-official-header {
+    margin-bottom: 0.4rem;
+    padding: 0;
+  }
+
+  /* The unified workspace has its own data header. Keep its form title,
+     but do not print a second DAB header. */
+  .dab-standard-forms-shell > :not(.dab-official-header) header > p {
+    display: none !important;
+  }
+}
