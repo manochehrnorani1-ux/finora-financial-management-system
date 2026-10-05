@@ -1,0 +1,6 @@
+{
+  "name": "چارت تشکیلاتی شرکت صرافی برکت‌الله غفوری",
+  "description": "سیستم جامع مدیریت سازمانی، رعایت قوانین و گزارش‌دهی نظارتی (STR/LCTR)، رهگیری بخشنامه‌های د افغانستان بانک، تمدید جوازها و دیتابیس کارمندان شرکت صرافی برکت‌الله غفوری.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

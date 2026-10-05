@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.20
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: TypeScript check
+        run: bunx tsc --noEmit
+
+      - name: ESLint check
+        run: bun run lint
+
+      - name: DAB form registry check
+        run: bun run verify:dab
+
+      - name: DAB route standardization check
+        run: bun run verify:dab-routes
+
+      - name: Architecture verification
+        run: bun run verify:architecture
+
+      - name: Production build
+        run: bun run build

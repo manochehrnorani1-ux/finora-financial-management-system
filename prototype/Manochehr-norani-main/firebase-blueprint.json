@@ -1,0 +1,204 @@
+{
+  "entities": {
+    "PersonnelNode": {
+      "title": "Personnel Node",
+      "description": "Organizational chart personnel node for Barakatullah Ghafouri Exchange",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Personnel ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full Name in Dari/Pashto"
+        },
+        "title": {
+          "type": "string",
+          "description": "Official Job Title"
+        },
+        "category": {
+          "type": "string",
+          "description": "Organizational category"
+        },
+        "key": {
+          "type": "string",
+          "description": "Unique node key"
+        }
+      },
+      "required": ["id", "name", "title", "category", "key"]
+    },
+    "CompanyMetadata": {
+      "title": "Company Metadata",
+      "description": "Company document header settings including issue date and custom logo",
+      "type": "object",
+      "properties": {
+        "issueDate": {
+          "type": "string",
+          "description": "Document issue date"
+        },
+        "customLogo": {
+          "type": "string",
+          "description": "Base64 or URL custom logo"
+        }
+      },
+      "required": ["issueDate"]
+    },
+    "MeetingMinutesData": {
+      "title": "Meeting Minutes Data",
+      "description": "Data for meeting minutes document",
+      "type": "object",
+      "properties": {
+        "meetingData": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "LicenseRenewalLetterData": {
+      "title": "License Renewal Letter Data",
+      "description": "Data for license renewal letter document",
+      "type": "object",
+      "properties": {
+        "letterData": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "LicenseChecklistData": {
+      "title": "License Checklist Data",
+      "description": "Data for license checklist document",
+      "type": "object",
+      "properties": {
+        "checklistData": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "EmployeeRecord": {
+      "title": "Employee Record",
+      "description": "Full information for a company employee including personal and professional details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "grandfatherName": { "type": "string" },
+        "position": { "type": "string" },
+        "tazkiraNo": { "type": "string" },
+        "education": { "type": "string" },
+        "experience": { "type": "string" },
+        "phone": { "type": "string" },
+        "tin": { "type": "string" },
+        "email": { "type": "string" },
+        "photo": { "type": "string", "description": "Base64 encoded photo or storage URL" },
+        "signature": { "type": "string", "description": "Base64 encoded signature" },
+        "formDate": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["fullName", "position"]
+    },
+    "ComplianceReport": {
+      "title": "Compliance Report",
+      "description": "Regulatory and AML/CFT compliance report for DAB / FinTRACA",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "reportNumber": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "severity": { "type": "string" },
+        "complianceOfficer": { "type": "string" },
+        "branchName": { "type": "string" },
+        "narrativeFindings": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "reportNumber", "type", "title"]
+    },
+    "RegulatoryDirective": {
+      "title": "Regulatory Directive",
+      "description": "Da Afghanistan Bank regulatory circular, directive or rule tracking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "directiveNo": { "type": "string" },
+        "title": { "type": "string" },
+        "issuingAuthority": { "type": "string" },
+        "category": { "type": "string" },
+        "companyComplianceStatus": { "type": "string" },
+        "complianceDeadline": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "directiveNo", "title"]
+    },
+    "AuthoritySubmission": {
+      "title": "Authority Submission",
+      "description": "Log of formal report submissions to Da Afghanistan Bank / FinTRACA",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "submissionCode": { "type": "string" },
+        "reportId": { "type": "string" },
+        "reportTitle": { "type": "string" },
+        "targetAuthority": { "type": "string" },
+        "status": { "type": "string" },
+        "submissionDate": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "submissionCode", "reportId"]
+    }
+  },
+  "firestore": {
+    "/personnel/{personnelKey}": {
+      "schema": {
+        "$ref": "#/entities/PersonnelNode"
+      },
+      "description": "Collection of all organizational chart personnel and branch representatives"
+    },
+    "/employees/{employeeId}": {
+      "schema": {
+        "$ref": "#/entities/EmployeeRecord"
+      },
+      "description": "Comprehensive employee records for management and official forms"
+    },
+    "/compliance_reports/{reportId}": {
+      "schema": {
+        "$ref": "#/entities/ComplianceReport"
+      },
+      "description": "AML/CFT Suspicious Transaction and Large Cash Transaction reports"
+    },
+    "/regulatory_directives/{directiveId}": {
+      "schema": {
+        "$ref": "#/entities/RegulatoryDirective"
+      },
+      "description": "Directives, circulars and regulatory updates issued by DAB"
+    },
+    "/regulatory_submissions/{submissionId}": {
+      "schema": {
+        "$ref": "#/entities/AuthoritySubmission"
+      },
+      "description": "Submissions and receipt acknowledgments from DAB and FinTRACA"
+    },
+    "/settings/company": {
+      "schema": {
+        "$ref": "#/entities/CompanyMetadata"
+      },
+      "description": "Company global settings and document header metadata"
+    },
+    "/settings/meeting_minutes_v1": {
+      "schema": {
+        "$ref": "#/entities/MeetingMinutesData"
+      },
+      "description": "Meeting minutes official records"
+    },
+    "/settings/license_renewal_letter_v2": {
+      "schema": {
+        "$ref": "#/entities/LicenseRenewalLetterData"
+      },
+      "description": "Official license renewal letter data"
+    },
+    "/settings/license_checklist_v1": {
+      "schema": {
+        "$ref": "#/entities/LicenseChecklistData"
+      },
+      "description": "DAB License application checklist and personnel data"
+    }
+  }
+}

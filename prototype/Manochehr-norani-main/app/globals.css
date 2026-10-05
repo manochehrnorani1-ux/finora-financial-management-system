@@ -1,0 +1,430 @@
+@import "tailwindcss";
+
+/* Shared form-header rules */
+main header img[alt="لوگوی شرکت"] {
+  display: block !important;
+  width: 4rem !important;
+  height: 4rem !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+  object-fit: contain !important;
+}
+
+/* Standard DAB and company form document layout */
+.dab-form-document,
+.dab-official-form,
+.company-form-document,
+.form-document {
+  width: 100%;
+  max-width: 210mm;
+  margin-inline: auto;
+  direction: rtl;
+  text-align: right;
+  background: #fff;
+}
+
+.dab-form-header,
+.form-document-header,
+.company-form-header {
+  width: 100%;
+  text-align: center;
+  direction: rtl;
+}
+
+.dab-form-header img,
+.form-document-header img,
+.company-form-header img {
+  display: block !important;
+  margin-inline: auto !important;
+  object-fit: contain !important;
+}
+
+/* English branding must not appear as a second visual header. */
+.dab-form-header .english-name,
+.dab-form-header .english-title,
+.dab-form-header [data-language="en"],
+.form-document-header .english-name,
+.form-document-header .english-title,
+.form-document-header [data-language="en"] {
+  display: none !important;
+}
+
+/* Company-issued forms do not show DAB department lines. */
+.company-form-header .dab-bank,
+.company-form-header .dab-department,
+.company-form-header .dab-directorate,
+.company-form-header [data-header-type="dab"] {
+  display: none !important;
+}
+
+/* Organization chart: official compact view. Cards show only name and role. */
+#org-chart-export-canvas [id^="org-node-"] > div[class*="bottom-[calc(100%+12px)"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="bottom-[calc(100%+12px)"],
+#org-chart-export-canvas [id^="org-node-"] > div[class*="pt-2.5"][class*="px-4"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="pt-2.5"][class*="px-4"],
+#org-chart-export-canvas [id^="org-node-"] > div[class*="border-t"][class*="py-4"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="border-t"][class*="py-4"],
+#org-chart-export-canvas [id^="org-node-"] > div[class*="mt-3"][class*="border-t"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="mt-3"][class*="border-t"],
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"] > div[class*="mt-2"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] > div[class*="mt-2"],
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"] > button,
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] > button {
+  display: none !important;
+}
+
+/* Keep the chart compact and aligned across all hierarchy levels. */
+#org-chart-export-canvas [id^="org-node-"],
+#org-chart-exact-canvas [id^="org-node-"] {
+  width: clamp(150px, 18vw, 220px) !important;
+  min-width: 150px !important;
+  max-width: 220px !important;
+  min-height: 78px !important;
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  transition: width 180ms ease, max-width 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 180ms ease !important;
+}
+
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] {
+  padding: 0.65rem 0.75rem !important;
+}
+
+/* Remove visual crowding. Keep only the name and the job title. */
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child,
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child {
+  margin: 0 !important;
+}
+
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child > div:first-child,
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child > div:first-child {
+  display: none !important;
+}
+
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child > button,
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child > button {
+  display: none !important;
+}
+
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child > div:nth-child(2),
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] > div:first-child > div:nth-child(2) {
+  width: 100% !important;
+  text-align: center !important;
+  font-size: clamp(0.78rem, 1.2vw, 0.98rem) !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+#org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"] > div:nth-child(2),
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] > div:nth-child(2) {
+  margin-top: 0.2rem !important;
+  font-size: clamp(0.68rem, 1vw, 0.82rem) !important;
+  line-height: 1.3 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Remove hover tooltip and expanded details from the compact chart view. */
+#org-chart-export-canvas [id^="org-node-"] > div[class*="bottom-[calc(100%+12px)"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="bottom-[calc(100%+12px)"],
+#org-chart-export-canvas [id^="org-node-"] > div[class*="border-t"][class*="px-4"],
+#org-chart-exact-canvas [id^="org-node-"] > div[class*="border-t"][class*="px-4"] {
+  display: none !important;
+}
+
+/* Responsive chart colors. Keep the hierarchy accents but reduce visual noise. */
+#org-chart-export-canvas [id^="org-node-"]:hover,
+#org-chart-exact-canvas [id^="org-node-"]:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+@media (max-width: 900px) {
+  #org-chart-export-canvas [id^="org-node-"],
+  #org-chart-exact-canvas [id^="org-node-"] {
+    width: 170px !important;
+    min-width: 170px !important;
+    max-width: 170px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  #org-chart-export-canvas [id^="org-node-"],
+  #org-chart-exact-canvas [id^="org-node-"] {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+    min-height: 70px !important;
+  }
+
+  #org-chart-export-canvas [id^="org-node-"] > div[class*="p-4"],
+  #org-chart-exact-canvas [id^="org-node-"] > div[class*="p-4"] {
+    padding: 0.55rem !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  #org-chart-export-canvas [id^="org-node-"],
+  #org-chart-exact-canvas [id^="org-node-"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+  }
+
+  #org-chart-export-canvas [id^="org-node-"]:hover,
+  #org-chart-exact-canvas [id^="org-node-"]:hover {
+    background: #172033 !important;
+    border-color: #64748b !important;
+  }
+}
+
+@layer utilities {
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm 12mm 12mm;
+    }
+
+    html, body {
+      width: 100% !important;
+      min-width: 100% !important;
+      height: auto !important;
+      min-height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      overflow: visible !important;
+      font-size: 10.5pt !important;
+      line-height: 1.45 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+
+    .print-hidden,
+    [class*="print:hidden"],
+    button,
+    aside,
+    nav,
+    [role="dialog"],
+    .modal-overlay,
+    .fixed.inset-0,
+    .fixed.bottom-6,
+    .fixed.bottom-8 {
+      display: none !important;
+    }
+
+    #batch-export-staging-container.hidden {
+      display: none !important;
+    }
+
+    main {
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: visible !important;
+    }
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      scrollbar-width: none !important;
+    }
+
+    *::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    #dab-license-renewal-canvas,
+    #dab-branch-renewal-canvas,
+    [id^="dab-branch-renewal-canvas-"],
+    #dab-guarantee-canvas,
+    #meeting-minutes-canvas,
+    #company-articles-canvas,
+    #company-proposal-canvas,
+    #license-checklist-canvas,
+    #dab-license-renewal-checklist-canvas,
+    #dab-branch-renewal-checklist-canvas,
+    #dab-license-renewal-letter-canvas,
+    #compliance-reporting-canvas,
+    #employee-management-cv-canvas,
+    #org-chart-exact-canvas,
+    #org-chart-export-canvas,
+    .dab-form-document,
+    .dab-official-form,
+    .company-form-document,
+    .form-document {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      page-break-inside: auto !important;
+      break-inside: auto !important;
+      overflow: visible !important;
+      height: auto !important;
+      max-height: none !important;
+    }
+
+    .dab-form-header,
+    .form-document-header,
+    .company-form-header {
+      width: 100% !important;
+      text-align: center !important;
+      direction: rtl !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    .dab-form-header img,
+    .form-document-header img,
+    .company-form-header img,
+    img[alt="لوگوی شرکت"],
+    img[alt="Logo"] {
+      display: block !important;
+      margin-inline: auto !important;
+      max-width: 32mm !important;
+      max-height: 32mm !important;
+      object-fit: contain !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    tr, th, td, tbody,
+    .dab-signature-box,
+    .dab-section-card,
+    .dab-section-box,
+    .guarantor-card,
+    .article-block,
+    .checkpoint-item,
+    .reporting-card,
+    .signature-area,
+    .stamp-box,
+    fieldset,
+    section,
+    article,
+    figure,
+    .avoid-break,
+    .keep-together,
+    .card,
+    .border,
+    .rounded-xl,
+    .rounded-2xl,
+    .rounded-lg,
+    .grid > *,
+    .flex-col > *,
+    .space-y-3 > *,
+    .space-y-4 > *,
+    .space-y-6 > *,
+    .space-y-8 > * {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      -webkit-column-break-inside: avoid !important;
+    }
+
+    h1, h2, h3, h4, h5, h6,
+    .section-title,
+    .card-title,
+    thead,
+    label,
+    legend {
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+
+    p, li, blockquote, dt, dd {
+      orphans: 3 !important;
+      widows: 3 !important;
+    }
+
+    .break-after-page,
+    .page-break,
+    .print-page-break,
+    .page-break-after {
+      page-break-after: always !important;
+      break-after: page !important;
+    }
+
+    .break-before-page,
+    .page-break-before {
+      page-break-before: always !important;
+      break-before: page !important;
+    }
+
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      page-break-inside: auto !important;
+      break-inside: auto !important;
+    }
+
+    thead {
+      display: table-header-group !important;
+    }
+
+    tfoot {
+      display: table-footer-group !important;
+    }
+
+    table th, table td {
+      border-color: #334155 !important;
+      padding: 4px 6px !important;
+      color: #000000 !important;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      border: none !important;
+      border-bottom: 1px solid #64748b !important;
+      background: transparent !important;
+      color: #000000 !important;
+      padding: 0 4px !important;
+      font-weight: 700 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      appearance: none !important;
+      -webkit-appearance: none !important;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      border: 1.5px solid #000000 !important;
+    }
+
+    select {
+      background-image: none !important;
+    }
+
+    #org-chart-exact-canvas,
+    #org-chart-export-canvas {
+      padding: 0 !important;
+      margin: 0 auto !important;
+    }
+
+    #org-chart-exact-canvas .max-w-4xl {
+      max-width: 100% !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+
+    #org-chart-exact-canvas button {
+      display: none !important;
+    }
+
+    #org-chart-export-canvas .print-reports-to-label {
+      display: none !important;
+    }
+  }
+}
