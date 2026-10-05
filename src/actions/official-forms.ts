@@ -172,21 +172,20 @@ export async function createGeneratedFormAction(fd: FormData) {
       const zipMapping = Object.fromEntries(mergedFields.filter((f) => f.mapping).map((f) => [f.key, f.mapping!]));
       const mapping = { ...baseMapping, ...zipMapping };
       const values: Record<string, unknown> = {};
-      const missingLabels: string[] = [];
       for (const f of fieldList) {
         const source = mapping[f.key];
-        const value = source ? sourceValue(source, enrichedCustomer, caseRow, business) : null;
-        values[f.key] = value;
-        if (!source && f.required) missingLabels.push(`${f.label} (mapping)`);
-        else if (f.required && (value === null || value === "" || (typeof value === "number" && value <= 0))) missingLabels.push(f.label);
+        values[f.key] = source ? sourceValue(source, enrichedCustomer, caseRow, business) : null;
       }
       values._zipBusiness = business;
-      if (missingLabels.length > 0) {
-        return { ok: false, error: "form_incomplete", message: missingLabels.join("، ") };
-      }
-      const allMapped = fieldList.length > 0 && fieldList.every((f) => Boolean(mapping[f.key]));
+      // Never block creation on missing required fields: many required fields
+      // (reasons, amounts, dates, declarations) are case-specific and must be
+      // filled by staff in the generated-form editor. The detail page lists
+      // exactly which required fields still need values.
+      const missingRequired = fieldList.some(
+        (f) => f.required && (values[f.key] === null || values[f.key] === "" || (typeof values[f.key] === "number" && (values[f.key] as number) <= 0)),
+      );
       const internal = !form.isOfficial;
-      const matchStatus = !fieldList.length || !allMapped ? "MISSING_FIELD" : internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
+      const matchStatus = !fieldList.length || missingRequired ? "MISSING_FIELD" : internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
       const internalNumber = await nextNumber(tx, ctx.org.id, "generated_form");
       const [row] = await tx.insert(generatedForms).values({
         organizationId: ctx.org.id,
@@ -229,11 +228,12 @@ export async function saveGeneratedFormValuesAction(fd: FormData) {
         values[fieldKey] = str(entry);
       }
       const fieldList = mergeZipFields(row.form?.formKey ?? "", (row.form?.fields ?? []) as never) as { key: string; label: string; required?: boolean }[];
-      const mapping = { ...(row.form?.fieldMapping ?? {}) as Record<string, string>, ...Object.fromEntries(fieldList.filter((f: any) => f.mapping).map((f: any) => [f.key, f.mapping])) };
+      // Completeness is judged by actual values (auto-filled or staff-entered),
+      // not by whether a field has an auto-fill mapping — otherwise a form could
+      // never leave MISSING_FIELD after manual completion.
       const missingRequired = fieldList.some((f) => f.required && !String(values[f.key] ?? "").trim());
-      const allMapped = fieldList.length > 0 && fieldList.every((f) => Boolean(mapping[f.key]));
       const internal = !row.form?.isOfficial;
-      const matchStatus = !fieldList.length || !allMapped ? "MISSING_FIELD" : missingRequired ? "MISSING_FIELD" : internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
+      const matchStatus = !fieldList.length || missingRequired ? "MISSING_FIELD" : internal ? "MATCHED" : "LEGAL_REVIEW_REQUIRED";
       await tx.update(generatedForms).set({ valuesSnapshot: values, matchStatus }).where(eq(generatedForms.id, id));
       await audit(tx, { orgId: ctx.org.id, userId: ctx.user.id, action: "UPDATE", entityType: "generated_form", entityId: id, oldData: { matchStatus: row.g.matchStatus }, newData: { matchStatus, filledFields: Object.keys(values).length } });
       return { id };
