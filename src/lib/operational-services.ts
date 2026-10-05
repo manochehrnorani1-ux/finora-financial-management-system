@@ -160,9 +160,9 @@ export const OPERATIONAL_SERVICES: OperationalService[] = [
     descPs: "د جواز د تمدید غوښتنې عملیاتي مدیریت له دوسیې جوړولو څخه تر مالي ارزونې، اسنادو بشپړولو او پایلې ثبتولو.",
     descEn: "Operational management of licence renewal from case opening through financial review, document completion and final result.",
     requiredDocuments: {
-      fa: ["جواز فعلی", "اسناد هویتی/ثبت فعالیت", "معلومات و اسناد مالیاتی", "اسناد پرداخت یا تصفیه در صورت نیاز"],
-      ps: ["اوسنی جواز", "هویتي/د فعالیت ثبت اسناد", "مالیاتي معلومات او اسناد", "د اړتیا په صورت کې د تادیې یا تصفیې اسناد"],
-      en: ["Current licence", "Identity/business registration documents", "Tax information and documents", "Payment or clearance evidence where required"],
+      fa: ["اصل جواز فعالیت", "سند پرداخت فیس درخواست تمدید جواز", "رسید پرداخت مالیات یا تصدیق عدم باقی‌داری مالیاتی", "تصدیق عدم مسئولیت جنایی مالک و کارمندان رسمی", "عکس درخواست‌دهنده (۳ قطعه)"],
+      ps: ["د فعالیت اصلي جواز", "د جواز د تمدید غوښتنې فیس د تادیې سند", "د مالیې د تادیې رسید یا د مالیاتی باقیدارۍ نه لرلو تصدیق", "د مالک او رسمي کارمندانو د جنایي مسئولیت نه لرلو تصدیق", "د غوښتونکي عکس (۳ قطعې)"],
+      en: ["Original activity licence", "Licence renewal application fee payment receipt", "Tax payment receipt or tax clearance certificate", "Criminal clearance certificate for the owner and designated staff", "Applicant photographs (3 copies)"],
     },
     workflow: {
       fa: ["ثبت درخواست", "تکمیل اسناد", "اجرا و پرداخت", "تحویل"],
