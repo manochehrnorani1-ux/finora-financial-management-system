@@ -81,7 +81,7 @@ export const OFFICIAL_FORMS_CATALOG: OfficialFormDefinition[] = [
     originalFileUrl: "https://dab.gov.af/sites/default/files/2020-09/%D9%81%D9%88%D8%B1%D9%85%20%20%D8%AF%D8%B1%D8%AE%D9%88%D8%A7%D8%B3%D8%AA%DB%8C%20%D8%A7%DB%8C%D8%AC%D8%A7%D8%AF%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%20%D9%BE%D9%88%D9%84%DB%8C.docx",
     fields: [
       ...APPLICANT_FIELDS,
-      { key: "service_type", label: "نوع خدمت درخواستی", type: "select", required: true, options: ["انتقال پول", "تaduیه حواله", "صرافی اسعار", "صدور و پرداخت حواله", "سایر"] },
+      { key: "service_type", label: "نوع خدمت درخواستی", type: "select", required: true, options: ["انتقال پول", "تأدیه حواله", "صرافی اسعار", "صدور و پرداخت حواله", "سایر"] },
       { key: "start_date", label: "تاریخ پیشنهادی شروع فعالیت", type: "date", required: true },
       { key: "office_address", label: "آدرس محل فعالیت (والیت / ناحیه)", type: "textarea", required: true },
       { key: "share_capital", label: "مبلغ سرمایه اولیه (افغانی)", type: "number", required: true },
