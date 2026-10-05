@@ -49,7 +49,7 @@ export default async function CaseDetailPage({ params, searchParams }: { params:
   const workflowAction = await getNextWorkflowAction(id);
   const query = (await searchParams) ?? {};
   const workflowTarget = typeof query.workflowTarget === "string" ? query.workflowTarget : null;
-  const workflowStepTargetId = typeof query.stepId === "string" ? query.stepId : null;
+
 
   const timelineEvents = await db.select().from(auditLogs)
     .where(and(
@@ -69,14 +69,9 @@ export default async function CaseDetailPage({ params, searchParams }: { params:
 
   const feeTotal = Math.max(0, Number(c.serviceFee) - Number(c.discountAmount));
   const activeWorkflowStep = workflowSteps.find((step) => step.status === "active");
-  const workflowGuide = [
-    { key: "review", title: "۱. ثبت و بررسی", text: "معلومات مشتری و دوسیه را بررسی کنید و اسناد اولیه را ثبت کنید." },
-    { key: "documents", title: "۲. تکمیل اسناد", text: "اسناد مورد نیاز را دریافت، بررسی و در دوسیه ثبت کنید." },
-    { key: "work", title: "۳. اجرای خدمت", text: "اقدام مشخص‌شده برای مرحله فعلی را انجام دهید و نتیجه را ثبت کنید." },
-    { key: "payment", title: "۴. تکمیل پرداخت", text: "مبلغ قابل پرداخت را بررسی و پرداخت را ثبت کنید. تا پرداخت کامل، مرحله قابل تکمیل نیست." },
-    { key: "complete", title: "۵. تکمیل مرحله", text: "پس از رفع همه پیش‌نیازها، روی «تکمیل مرحله» کلیک کنید تا مرحله بعد فعال شود." },
-    { key: "final", title: "۶. نهایی‌سازی", text: "پس از تکمیل همه مراحل و پرداخت‌های لازم، دوسیه برای نهایی‌سازی آماده می‌شود." },
-  ];
+  const activeStepAmount = Number(activeWorkflowStep?.amount ?? 0);
+  const activeStepPaid = Number(activeWorkflowStep?.paidAmount ?? 0);
+  const activeStepRemaining = Math.max(0, activeStepAmount - activeStepPaid);
   const paid = fees.reduce((sum, r) => sum + Number(r.r.paidAmount), 0);
   const remaining = Math.max(0, feeTotal - paid);
   const paymentTargets = [...cash.map((a) => ({ value: `cash:${a.id}`, label: `${t("cash")}: ${a.name}` })), ...bank.map((a) => ({ value: `bank:${a.id}`, label: `${t("bank")}: ${a.label}` }))];
@@ -145,163 +140,92 @@ export default async function CaseDetailPage({ params, searchParams }: { params:
       )}
 
       <WorkflowTarget target={workflowTarget} />
-      <Card title="راهنمای تکمیل دوسیه" className="mb-4 border-emerald-200 bg-white">
+      <Card title="مسیر دوسیه" className="mb-4 border-emerald-200 bg-white" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
         {workflowSteps.length === 0 ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             <strong>برای این خدمت Workflow تعریف نشده است.</strong>
             <div>مراحل این دوسیه از تعریف Workflow همان خدمت ساخته می‌شوند. تا وقتی Workflow تعریف نشده باشد، سیستم مرحله یا اقدام ساختگی نمایش نمی‌دهد.</div>
           </div>
         ) : workflowAction.stageId ? (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4" data-workflow-target="service-action">
+              <div className="text-xs font-semibold text-amber-700">اقدام بعدی شما</div>
+              <div className="mt-1 text-lg font-bold text-amber-950">{workflowAction.label}</div>
+              <p className="mt-2 text-sm leading-6 text-amber-900">{workflowAction.description}</p>
+              {workflowAction.blockers.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <div className="text-xs font-semibold text-amber-800">برای ادامه، این موارد را رفع کنید — برای رفع هر مورد کلیک کنید:</div>
+                  {workflowAction.blockers.map((b) => (
+                    b.target ? (
+                      <Link key={b.code} href={b.target} className="block rounded-lg border border-amber-300 bg-white p-3 transition hover:border-amber-500 hover:shadow-sm">
+                        <div className="font-medium text-slate-900">⚠ {b.label} <span className="text-emerald-700">→</span></div>
+                        <div className="text-xs text-slate-600">{b.detail}</div>
+                      </Link>
+                    ) : (
+                      <div key={b.code} className="rounded-lg border border-amber-200 bg-white p-3">
+                        <div className="font-medium text-slate-900">⚠ {b.label}</div>
+                        <div className="text-xs text-slate-600">{b.detail}</div>
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
+              <div className="mt-4">
+                {workflowAction.actionType === "complete_stage" && ctx.can("cases.write") ? (
+                  <ActionButton action={completeCaseWorkflowStepAction} args={[workflowAction.stageId]} label="تکمیل مرحله و فعال‌سازی مرحله بعد" variant="primary" confirm="این مرحله تکمیل و مرحله بعد فعال شود؟" />
+                ) : workflowAction.target ? (
+                  <Link href={workflowAction.target} className="inline-flex rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white">
+                    {workflowAction.actionType === "document" ? "رفتن مستقیم به سند" : workflowAction.actionType === "verification" ? "بررسی مستقیم سند" : workflowAction.actionType === "payment" ? "رفتن مستقیم به پرداخت" : "ادامه کار"} →
+                  </Link>
+                ) : workflowAction.blockers.length === 0 ? (
+                  <span className="text-xs text-slate-500">هدف عملیاتی برای این مرحله تعریف نشده است.</span>
+                ) : null}
+              </div>
+            </div>
             <div className="space-y-2">
               {workflowSteps.map((step) => {
                 const completed = step.status === "completed";
                 const active = step.id === workflowAction.stageId;
                 const locked = !completed && !active && step.status !== "blocked";
                 return (
-                  <div key={step.id} className={`rounded-xl border p-4 ${active ? "border-emerald-400 bg-emerald-50 shadow-sm" : completed ? "border-emerald-200 bg-emerald-50/30" : step.status === "blocked" ? "border-red-200 bg-red-50" : "border-slate-200 bg-slate-50"}`}>
-                    <div className="flex items-center gap-3">
-                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${completed ? "bg-emerald-600 text-white" : active ? "bg-emerald-700 text-white" : step.status === "blocked" ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-500"}`}>
-                        {completed ? "✓" : step.status === "blocked" ? "!" : locked ? "🔒" : step.stepNo}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs text-slate-500">مرحله {step.stepNo}</div>
-                        <div className="font-semibold text-slate-900">{step.title}</div>
-                        {active && <div className="mt-1 text-sm text-emerald-800">{step.actionRequired || step.title}</div>}
-                        {completed && step.completedAt && <div className="mt-1 text-xs text-slate-500">تکمیل‌شده: {formatDateTime(step.completedAt, fmt)}</div>}
-                        {locked && <div className="mt-1 text-xs text-slate-500">پس از تکمیل مرحله قبلی فعال می‌شود.</div>}
-                      </div>
-                      <Badge status={completed ? "completed" : active ? "under_review" : step.status === "blocked" ? "rejected" : "draft"} label={completed ? "تکمیل‌شده" : active ? "مرحله فعلی" : step.status === "blocked" ? "متوقف" : "قفل"} />
+                  <div key={step.id} className={`flex items-center gap-3 rounded-xl border p-3 ${active ? "border-emerald-400 bg-emerald-50" : completed ? "border-emerald-200 bg-emerald-50/30" : step.status === "blocked" ? "border-red-200 bg-red-50" : "border-slate-200 bg-slate-50"}`}>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${completed ? "bg-emerald-600 text-white" : active ? "bg-emerald-700 text-white" : step.status === "blocked" ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-500"}`}>
+                      {completed ? "✓" : step.status === "blocked" ? "!" : locked ? "🔒" : step.stepNo}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-slate-500">مرحله {step.stepNo}</div>
+                      <div className="font-semibold text-slate-900">{step.title}</div>
                     </div>
+                    <Badge status={completed ? "completed" : active ? "under_review" : step.status === "blocked" ? "rejected" : "draft"} label={completed ? "تکمیل‌شده" : active ? "مرحله فعلی" : step.status === "blocked" ? "متوقف" : "قفل"} />
                   </div>
                 );
               })}
             </div>
-            <div className="h-fit rounded-xl border border-amber-200 bg-amber-50 p-4" data-workflow-target="service-action">
-              <div className="text-xs font-semibold text-amber-700">اقدام بعدی شما</div>
-              <div className="mt-1 text-lg font-bold text-amber-950">{workflowAction.label}</div>
-              <p className="mt-2 text-sm leading-6 text-amber-900">{workflowAction.description}</p>
-              {workflowAction.blockers.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <div className="text-xs font-semibold text-amber-800">{workflowAction.blockers.length} مورد برای ادامه باقی مانده است:</div>
-                  {workflowAction.blockers.map((b) => (
-                    <div key={b.code + b.label} className="rounded-lg border border-amber-200 bg-white p-3">
-                      <div className="font-medium text-slate-900">⚠ {b.label}</div>
-                      <div className="text-xs text-slate-600">{b.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-4">
-                {workflowAction.actionType === "complete_stage" && ctx.can("cases.write") && workflowStepTargetId === workflowAction.stageId ? (
-                  <ActionButton action={completeCaseWorkflowStepAction} args={[workflowAction.stageId]} label="تکمیل مرحله و فعال‌سازی مرحله بعد" variant="primary" confirm="تمام Gateها پاس شده‌اند. این مرحله تکمیل و مرحله بعد فعال شود؟" />
-                ) : workflowAction.target ? (
-                  <Link href={workflowAction.target} className="inline-flex rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white">
-                    {workflowAction.actionType === "document" ? "رفتن مستقیم به سند" : workflowAction.actionType === "verification" ? "بررسی مستقیم سند" : workflowAction.actionType === "payment" ? "رفتن مستقیم به پرداخت" : workflowAction.actionType === "complete_stage" ? "باز کردن تکمیل مرحله" : "ادامه کار"} →
-                  </Link>
-                ) : (
-                  <span className="text-xs text-slate-500">هدف عملیاتی برای این مرحله تعریف نشده است.</span>
-                )}
+            {activeWorkflowStep && ctx.can("cases.write") && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <span className="w-full text-xs text-slate-500">اقدام‌های مرحله فعلی «{activeWorkflowStep.title}»:</span>
+                {activeStepAmount > 0 && <span className="text-xs text-slate-600">مبلغ: <Money value={activeStepAmount} currency={c.feeCurrency} /> · پرداخت‌شده: <Money value={activeStepPaid} currency={c.feeCurrency} /> · باقی‌مانده: <Money value={activeStepRemaining} currency={c.feeCurrency} /></span>}
+                <FormDialog
+                  title="تنظیم مرحله عملیاتی"
+                  triggerLabel="تنظیم مرحله"
+                  triggerSize="sm"
+                  action={updateCaseWorkflowStepAction}
+                  hidden={{ id: activeWorkflowStep.id }}
+                  fields={[
+                    { name: "actionRequired", label: "اقدام مورد نیاز", defaultValue: activeWorkflowStep.actionRequired ?? activeWorkflowStep.title, full: true },
+                    { name: "dueDate", label: "موعد", type: "date", defaultValue: activeWorkflowStep.dueDate ?? undefined },
+                    { name: "amount", label: "مبلغ (" + c.feeCurrency + ")", type: "number", defaultValue: activeWorkflowStep.amount ?? undefined },
+                    { name: "notes", label: "یادداشت", type: "textarea", defaultValue: activeWorkflowStep.notes ?? undefined, full: true },
+                  ]}
+                />
+                {activeStepAmount > 0 && activeStepRemaining > 0 && <FormDialog title="ثبت پرداخت مرحله" triggerLabel="ثبت پرداخت" triggerSize="sm" action={recordCaseWorkflowPaymentAction} hidden={{ stepId: activeWorkflowStep.id }} fields={[{ name: "amount", label: "مبلغ پرداخت (" + c.feeCurrency + ")", type: "number", required: true, defaultValue: activeStepRemaining }, { name: "paymentDate", label: "تاریخ پرداخت", type: "date", required: true }, { name: "paymentMethod", label: "روش پرداخت" }, { name: "referenceNumber", label: "شماره مرجع/رسید" }, { name: "notes", label: "یادداشت", type: "textarea", full: true }]} />}
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">✓ تمام مراحل Workflow تکمیل شده‌اند و دوسیه برای مرحله نهایی فرآیند آماده است.</div>
         )}
       </Card>
-      {workflowSteps.length > 0 && (
-        <>
-          <Card title="گردش‌کار عملیاتی دوسیه" className="mb-4" actions={c.nextAction && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">اقدام بعدی: {c.nextAction}</span>}>
-          <div className="space-y-3">
-            {workflowSteps.map((step) => {
-              const taxSettlementForPayment = c.workflowKey === "tax-settlement" && step.stepNo === 5 && settlements.length === 1 ? settlements[0] : null;
-              const stepAmount = taxSettlementForPayment ? Number(taxSettlementForPayment.taxAmount ?? 0) : Number(step.amount ?? 0);
-              const stepPaid = taxSettlementForPayment ? Number(taxSettlementForPayment.paidAmount ?? 0) : Number(step.paidAmount ?? 0);
-              const stepRemaining = taxSettlementForPayment ? Number(taxSettlementForPayment.remainingAmount ?? 0) : Number(step.remainingAmount ?? 0);
-              return (
-              <div key={step.id} className="rounded-lg border border-slate-200 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold">{step.stepNo}</span>
-                    <span className="font-medium">{step.title}</span>
-                  </div>
-                  <Badge status={step.status === "completed" ? "completed" : step.status === "active" ? "under_review" : step.status === "blocked" ? "rejected" : "draft"} label={step.status === "completed" ? "تکمیل‌شده" : step.status === "active" ? "مرحله فعلی" : step.status === "blocked" ? "متوقف" : "در انتظار"} />
-                </div>
-                <div className="mt-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
-                  <span>اقدام: {step.actionRequired || "—"}</span>
-                  <span>موعد: {step.dueDate ? formatDate(step.dueDate, fmt) : "—"}</span>
-                  <span>مبلغ: {stepAmount <= 0 ? "—" : <Money value={stepAmount} currency={c.feeCurrency} />}</span>
-                  <span>پرداخت‌شده: {stepPaid > 0 ? <Money value={stepPaid} currency={c.feeCurrency} /> : "—"}</span>
-                  <span>باقی‌مانده: {stepRemaining > 0 ? <Money value={stepRemaining} currency={c.feeCurrency} /> : "—"}</span>
-                </div>
-                {ctx.can("cases.write") && step.status !== "completed" && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <FormDialog
-                      title="تنظیم مرحله عملیاتی"
-                      triggerLabel="تنظیم مرحله"
-                      triggerSize="sm"
-                      action={updateCaseWorkflowStepAction}
-                      hidden={{ id: step.id }}
-                      fields={[
-                        { name: "actionRequired", label: "اقدام مورد نیاز", defaultValue: step.actionRequired ?? step.title, full: true },
-                        { name: "dueDate", label: "موعد", type: "date", defaultValue: step.dueDate ?? undefined },
-                        { name: "amount", label: "مبلغ (" + c.feeCurrency + ")", type: "number", defaultValue: step.amount ?? undefined },
-                        { name: "notes", label: "یادداشت", type: "textarea", defaultValue: step.notes ?? undefined, full: true },
-                      ]}
-                    />
-                    {step.status === "active" && stepAmount > 0 && stepRemaining > 0 && <FormDialog title="ثبت پرداخت مرحله" triggerLabel="ثبت پرداخت" triggerSize="sm" action={recordCaseWorkflowPaymentAction} hidden={{ stepId: step.id }} fields={[{ name: "amount", label: "مبلغ پرداخت (" + c.feeCurrency + ")", type: "number", required: true, defaultValue: stepRemaining }, { name: "paymentDate", label: "تاریخ پرداخت", type: "date", required: true }, { name: "paymentMethod", label: "روش پرداخت" }, { name: "referenceNumber", label: "شماره مرجع/رسید" }, { name: "notes", label: "یادداشت", type: "textarea", full: true }]} />}
-                    {step.status === "active" && c.workflowKey === "tax-settlement" && step.stepNo === 5 ? (
-                      settlements.length === 0 ? (
-                        <Link href={`/tax-settlements?caseId=${c.id}`} className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white">
-                          ثبت تصفیه مالیاتی همین دوسیه →
-                        </Link>
-                      ) : settlements.length > 1 ? (
-                        <Link href={`/tax-settlements?caseId=${c.id}`} className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
-                          بررسی تصفیه‌های این دوسیه →
-                        </Link>
-                      ) : settlements[0].status === "calculated" || settlements[0].status === "REQUIRES_LEGAL_REVIEW" ? (
-                        <Link href={`/tax-settlements/${settlements[0].id}`} className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white">
-                          تکمیل/تأیید تصفیه →
-                        </Link>
-                      ) : Number(settlements[0].remainingAmount ?? 0) > 0 ? (
-                        <Link href={`/tax-settlements/${settlements[0].id}`} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white">
-                          ثبت پرداخت مالیاتی →
-                        </Link>
-                      ) : (
-                        <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
-                      )
-                    ) : step.status === "active" ? (
-                      stepRemaining > 0 ? (
-                        <span className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
-                          تکمیل مرحله پس از پرداخت باقی‌مانده امکان‌پذیر است.
-                        </span>
-                      ) : (
-                      <ActionButton action={completeCaseWorkflowStepAction} args={[step.id]} label="تکمیل مرحله" variant="primary" confirm="این مرحله تکمیل شود؟" />
-                      )
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            )})}
-          </div>
-        </Card>
-        </>
-      )}
-      {c.workflowKey === "tax-settlement" && settlements.length === 0 && !["closed", "cancelled"].includes(c.status) && (
-        <Card title="پرداخت مالیاتی — نیاز به تصفیه دارد" className="mb-4 border-amber-300 bg-amber-50">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm leading-6 text-amber-950">
-              <strong>این دوسیه هنوز رکورد تصفیه مالیاتی ندارد.</strong>
-              <div>برای ثبت هرگونه پرداخت مالیاتی، ابتدا تصفیه مالیاتی همین دوسیه را ثبت و محاسبه کنید؛ سیستم پرداخت را بدون آن اجازه نمی‌دهد.</div>
-            </div>
-            {ctx.can("tax_settlements.write") && (
-              <Link href={`/tax-settlements?caseId=${c.id}`} className="shrink-0 rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white">
-                ثبت تصفیه این دوسیه →
-              </Link>
-            )}
-          </div>
-        </Card>
-      )}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card title={t("details")} className="lg:col-span-1">
           <KV items={[[t("caseNumber"), c.caseNumber], [t("customer"), <Link key="c" href={`/customer-accounts/${c.customerId}`} className="text-emerald-700">{record.customer.name}</Link>], [t("service"), record.service?.name ?? "-"], [t("openingDate"), formatCaseOpeningDate(c.openedAt, fmt)], [t("responsibleEmployee"), record.employee ?? "-"], [t("priority"), t(c.priority)], [t("caseFee"), <Money key="f" value={c.serviceFee} currency={c.feeCurrency} />], [t("discount"), <Money key="d" value={c.discountAmount} currency={c.feeCurrency} />], [t("feeStatus"), t(c.feeStatus)], [t("createdBy"), c.createdBy === ctx.user.id ? ctx.user.fullName : ""]]} />
